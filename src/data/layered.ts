@@ -100,8 +100,8 @@ const P = (n: number): LayerReq => ({ kind: 'plays', n })
 
 export const LAYER_REQS: Record<string, LayerReq> = {
   // Headwear
-  head_cap: L(2), head_beanie: L(3), head_wrap: L(3), head_straw_hat: L(4), head_headphones: L(5),
-  head_traveller_hat: L(6), head_flower_crown: S(3), head_laurel: S(7), head_knight_helm: W(3),
+  head_cap: L(2), head_beanie: L(3), head_wrap: L(3), head_straw_hat: L(4), head_headphones: L(3),
+  head_traveller_hat: L(6), head_flower_crown: S(2), head_laurel: S(7), head_knight_helm: W(3),
   head_centurion: W(8), head_winged_helm: L(12), head_crown: L(15), head_dragon_helm: W(20),
   head_halo: S(30), head_crown_stars: S(60), head_helmet_salvation: L(25),
   // Tops
@@ -133,10 +133,10 @@ export const LAYER_REQS: Record<string, LayerReq> = {
   head_star_circlet: V(20), belt_star_sash: V(40), legs_starry: V(75),
   top_light_robe: V(120), back_star_wings: V(200),
   // Between them.
-  head_goggles: W(4), head_feather_cap: L(9), head_olive_wreath: S(10), head_flame_crown: S(21),
+  head_goggles: W(1), head_feather_cap: L(9), head_olive_wreath: S(10), head_flame_crown: S(21),
   top_fisherman_sweater: L(6), top_varsity: L(11), top_many_colors: P(60),
-  shoes_glow_sneakers: P(100), shoes_winged: S(30),
-  held_fishing_net: L(5), held_trumpet: S(7), held_bread_basket: P(30), held_star_staff: L(45),
+  shoes_glow_sneakers: P(25), shoes_winged: S(30),
+  held_fishing_net: L(5), held_trumpet: S(3), held_bread_basket: P(30), held_star_staff: L(45),
   back_scroll_case: V(30), back_lantern_pack: S(14), back_elijah_mantle: S(40),
   // ── The second drop ──
   // Fishers of Galilee (Matthew 4:19): daily verses played, joined by the
@@ -148,10 +148,14 @@ export const LAYER_REQS: Record<string, LayerReq> = {
   // The Builder (Nehemiah 4:6): a streak, because a wall goes up a day at a time.
   head_work_bandana: S(5), belt_tool_belt: S(9), held_hammer: S(12),
   top_work_apron: S(18), back_toolbox: S(25),
-  // Everyday.
-  head_bandana: L(3), head_pompom_beanie: L(4), head_cowboy_hat: L(8),
-  top_raincoat: L(5), top_puffer_jacket: L(10), shoes_rain_boots: L(5),
-  held_umbrella: L(6), held_balloon: P(5), back_guitar: L(12), back_skateboard: W(8),
+  // Everyday. The GOOFY pieces (balloon, pompom, goggles, skateboard,
+  // glow sneakers, trumpet) are deliberately the EASY ones (2026-11-12, the
+  // owner's call): a kid would rather wear the funny thing than the cool one,
+  // so it should arrive in the first week, and the armour and wings stay the
+  // long climb.
+  head_bandana: L(3), head_pompom_beanie: L(2), head_cowboy_hat: L(8),
+  top_raincoat: L(5), top_puffer_jacket: L(10), shoes_rain_boots: L(3),
+  held_umbrella: L(3), held_balloon: P(2), back_guitar: L(6), back_skateboard: W(3),
 }
 
 /** Named sets. A set is a NAME and nothing else: it grants nothing, draws no

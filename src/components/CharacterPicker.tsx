@@ -441,6 +441,9 @@ const hairHexFor = (key?: string) => (HAIRS.find((h) => h.key === key) ?? HAIRS[
  *  and by the You tab's one-time card (WardrobeInvite), so the two can't differ. */
 export const toLayered = (spec: AvatarSpec): AvatarSpec => ({
   ...spec,
+  // An overlay worn on the old figure does not come along: a new wardrobe
+  // that opens wearing wings nobody chose reads as a bug (it did, 2026-11-12).
+  ...(isOverlaySkin(equippedSkinId(spec)) ? { skinId: null, regalia: null } : {}),
   outfit: defaultOutfit(figureOf(spec), hairHexFor(spec.hair)),
 })
 
@@ -534,6 +537,24 @@ function LayeredBuilder({
           <Character spec={value} size={setup ? stageSize() : size} fullBody title="Your character" />
         </motion.div>
       </div>
+
+      {/* An overlay look (the wings, the cross, the vine, the pillar) is a
+          SKIN, so nothing in this builder could take it off: it rode along from
+          an old character into the wardrobe and stood there with no control in
+          sight (2026-11-12). Say what it is and offer the one tap. */}
+      {!setup && isOverlaySkin(equippedSkinId(value)) && (
+        <div
+          className="card"
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 12px', margin: 0 }}
+        >
+          <span className="dim" style={{ fontSize: 13 }}>
+            Also wearing <b style={{ color: 'var(--ink)' }}>{skinById(equippedSkinId(value))?.name ?? 'a look'}</b>
+          </span>
+          <button className="pill" onClick={() => set({ skinId: null, regalia: null })} style={{ flexShrink: 0 }}>
+            Take off
+          </button>
+        </div>
+      )}
 
       <div>
         <RowLabel>Figure</RowLabel>
@@ -634,7 +655,10 @@ function LayeredBuilder({
                 </span>
               ) : (
                 <TintedPiece
-                  src={layerUrl(figure, id)}
+                  // A back piece is painted only where it shows around the body,
+                  // so alone it was a body-shaped hole with straps: back tiles use
+                  // a picture of the piece itself (scripts/avatar/back-icons.py).
+                  src={tab === 'back' ? `/avatar/icons/${id}.webp` : layerUrl(figure, id)}
                   // A colourable piece is stored GREY and coloured at runtime, so
                   // its tile showed grey while the character wore blue. The tile
                   // wears the colour picked for this slot, like the figure does.

@@ -1409,7 +1409,7 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 53
   },
   "head_lion_helm": {
-   "h": 158,
+   "h": 157,
    "w": 129,
    "x": 118,
    "y": 61
@@ -1583,7 +1583,7 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 390
   },
   "legs_baggy": {
-   "h": 259,
+   "h": 258,
    "w": 115,
    "x": 123,
    "y": 383
@@ -1787,7 +1787,7 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 214
   },
   "top_explorer_jacket": {
-   "h": 233,
+   "h": 225,
    "w": 175,
    "x": 93,
    "y": 198
@@ -2335,7 +2335,7 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 53
   },
   "head_lion_helm": {
-   "h": 158,
+   "h": 157,
    "w": 129,
    "x": 118,
    "y": 61
@@ -2713,7 +2713,7 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 214
   },
   "top_explorer_jacket": {
-   "h": 233,
+   "h": 225,
    "w": 243,
    "x": 59,
    "y": 198
@@ -4637,7 +4637,7 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 215
   },
   "top_explorer_jacket": {
-   "h": 421,
+   "h": 298,
    "w": 174,
    "x": 93,
    "y": 198
@@ -5563,7 +5563,7 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 215
   },
   "top_explorer_jacket": {
-   "h": 421,
+   "h": 298,
    "w": 243,
    "x": 58,
    "y": 198

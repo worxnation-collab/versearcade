@@ -51,7 +51,12 @@ export function LayeredFigure({ spec, portrait }: { spec: AvatarSpec; portrait: 
         ? { x: 5, y: 7, width: 110, height: 156, preserveAspectRatio: 'xMidYMin slice' }
         : { x: 10, y: 20, width: 100, height: 140, preserveAspectRatio: 'xMidYMax meet' })}
       viewBox={vb.map((n) => Math.round(n)).join(' ')}
-      overflow="hidden"
+      // Full length draws past its frame: a balloon, a banner or a tall crown
+      // rises above the head's 50px of headroom, and clipping it cut the
+      // balloon in half (2026-11-12). The outer 120x170 box has 20 units above
+      // this one to spill into, so the figure keeps its size. A portrait chip
+      // is a crop by design and stays clipped.
+      overflow={portrait ? 'hidden' : 'visible'}
     >
       <defs>
         {colors.map((c) => (

@@ -180,6 +180,24 @@ export function publicUrl(path: string): string {
   return supabase!.storage.from(BUCKET).getPublicUrl(path).data.publicUrl
 }
 /**
+ * Where a figure painted INTO a backdrop lives: one still per (painting,
+ * figure), made by `scripts/gen-cast-stills.mjs` and animated like any other
+ * painting, so the person gestures and speaks instead of standing as a stiff
+ * cut-out over a moving road. `/tiktok/roads/shore.jpg` + `cephas` →
+ * `/tiktok/cast/shore--cephas.jpg`.
+ */
+export const castStillPath = (sceneUrl: string, figure: string) =>
+  `/tiktok/cast/${sceneUrl.split('?')[0].split('/').pop()!.replace(/\.(jpe?g|png)$/i, '')}--${figure}.jpg`
+
+/** The painted-in still, alive, when its still AND at least one clip exist; otherwise null. */
+export async function castStill(r: Pick<Renderer, 'loadImage' | 'loadVideo' | 'makeLiving' | 'isAlive'>, sceneUrl: string, figure: string): Promise<HTMLImageElement | null> {
+  const url = castStillPath(sceneUrl, figure)
+  if (!(await existsAt(url, 'image/'))) return null
+  const img = await makeAlive(r, await r.loadImage(url).catch(() => null), url)
+  return img && r.isAlive(img) ? img : null
+}
+
+/**
  * A painting that MOVES, when its clips exist beside it: `<name>.mp4` (the
  * opening move) and `<name>-loop.mp4` (the calm loop that follows), made by
  * `scripts/gen-living.mjs`. They are registered against the image object, so

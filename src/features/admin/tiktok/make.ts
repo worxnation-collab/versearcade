@@ -16,7 +16,7 @@ import { buildCpuPlan, CPU_PROFILES, type CpuLevel } from '@/features/arena/cpu'
 import type { QuizStep } from '@/lib/tiktokRender'
 import { challengeIndex } from '@/lib/tiktokChallenge'
 import {
-  READERS, TELLERS, ROOMS, skinPath, loadScene, publicUrl, existsAt, parkFile, makeAlive,
+  READERS, TELLERS, ROOMS, skinPath, loadScene, publicUrl, existsAt, parkFile, makeAlive, castStill, scenePath, SPEAKER_SKIN,
   seedFor, storySeedFor, autoPick, autoCast, challengeCast, spokenReference, call, fetchCopy, fetchStory, fetchVoice, bedFor, backdropFor, tierFor, speakerFor, ownFigure,
   FOUNDER_PHOTO, VOICE_LABEL, voiceWavPath, voiceJsonPath,
   type Copy, type Made, type Story, type Renderer, type VoiceTrack,
@@ -204,6 +204,9 @@ export async function makeVerse(d: string, o: VerseOptions, progress: Progress):
     // painting, which is how this was found.
     const painted = await makeAlive(r, await r.loadImage(versePainting(v.reference)).catch(() => null), versePainting(v.reference))
     const scene = painted ?? (await loadScene(r, c.scene).catch(() => null))
+    // The speaker painted INTO the scene and animated with it, when that
+    // still has been made: he gestures and speaks rather than standing stiff.
+    const together = await castStill(r, painted ? versePainting(v.reference) : scenePath(c.scene), c2.figure)
     const figure = await r.loadImage(`/skins/${c2.figure}.png`).catch(() => null)
     if (scene && figure) {
       progress(0, 'asking for the reading')
@@ -234,7 +237,7 @@ export async function makeVerse(d: string, o: VerseOptions, progress: Progress):
       const bed2 = o.music !== false ? await bedFor(await r.plannedDuration(reading, copy2?.hook, false, opener.audio), 'morning') : undefined
       const out2 = await r.renderTikTok({
         reference: v.reference, text: v.text, hook: copy2?.hook, audio: reading,
-        backdrop: { kind: 'builtin', scene, figure },
+        backdrop: together ? { kind: 'still', image: together } : { kind: 'builtin', scene, figure },
         opener: { audio: opener.audio, words: opener.words, photo: photo2, label: VOICE_LABEL },
         bed: bed2, onProgress: progress,
       })
@@ -826,7 +829,12 @@ async function makeScriptedQuiz(d: string, sq: ScriptedQuiz, o: ChallengeOptions
   }
   progress(0, 'rendering')
   const r: Renderer = await import('@/lib/tiktokRender')
-  const [backdrop, figure] = await Promise.all([r.loadImage('/tiktok/exchange/chalkboard.jpg').then((b) => makeAlive(r, b, '/tiktok/exchange/chalkboard.jpg')), ownFigure(r).catch(() => null).then((f) => f ?? undefined)])
+  // He is painted into the classroom and animated with it when that still
+  // exists (castStill); otherwise the board moves and he stands on top.
+  const together = await castStill(r, '/tiktok/exchange/chalkboard.jpg', SPEAKER_SKIN)
+  const [backdrop, figure] = together
+    ? [together, undefined]
+    : await Promise.all([r.loadImage('/tiktok/exchange/chalkboard.jpg').then((b) => makeAlive(r, b, '/tiktok/exchange/chalkboard.jpg')), ownFigure(r).catch(() => null).then((f) => f ?? undefined)])
   const bed = o.music !== false ? await bedFor(joined.sec + 3, 'morning') : undefined
   const out = await r.renderChalkQuiz({
     backdrop, figure, prompt: sq.prompt, options: [...sq.options], audio: joined.wav, bed, words: own.thought,

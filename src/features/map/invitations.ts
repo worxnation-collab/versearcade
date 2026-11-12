@@ -13,7 +13,7 @@ import { useChurchCheckIns } from '@/store/churchCheckIns'
 import { useWashing } from '@/store/washing'
 import { usePrayerWall } from '@/store/prayerWall'
 import { useAccountLocked } from '@/components/AccountWall'
-import { gatheringOpen } from '@/data/gathering'
+import { gatheringOpen, gatheringSuitsYou } from '@/data/gathering'
 import { todayLocalDate } from '@/lib/date'
 import type { IconId } from '@/data/icons'
 
@@ -143,7 +143,7 @@ export function useInvitations(): MapInvite[] {
   const kneltAtWallToday = usePrayerWall((s) => s.today > 0)
   const wallOpen = usePrayerWall((s) => s.available)
   const totalPlays = useAuth((s) => s.profile?.totalPlays ?? 0)
-  const gathering = gatheringOpen()
+  const gathering = gatheringOpen() && gatheringSuitsYou()
 
   // The four day-flags nothing else on a given screen necessarily loads. The
   // three app-wide ones (buddies, gifts, the road) are already pulled in

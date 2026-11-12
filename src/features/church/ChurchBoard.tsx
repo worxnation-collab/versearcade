@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useChurch, RADIUS_CHOICES, TIMEFRAME_CHOICES } from '@/store/church'
 import type { TimeframeChoice } from '@/store/church'
@@ -60,6 +61,40 @@ export function ChurchBoard() {
   // be claiming somebody won a day that hasn't started.
   const quiet =
     windowed && !boardLoading && board.length > 0 && board.every((c) => (c.points ?? c.xp) <= 0)
+
+  // Alone in range — the usual state for a small church. The full board here
+  // was ~500px of controls, a count, an empty card and one row restating the
+  // church whose yard is drawn right above it. So it collapses to one card
+  // that says so and opens the worldwide board; "Change distance" brings the
+  // controls back for somebody who wants them.
+  const [controls, setControls] = useState(false)
+  const alone = !boardLoading && !worldwide && board.length <= 1
+  if (alone && !controls) {
+    return (
+      <div className="center" style={{ padding: '4px 0' }}>
+        <p className="dim" style={{ margin: 0, fontSize: 14, lineHeight: 1.5 }}>
+          Yours is the only church playing within {radiusMiles} miles.
+        </p>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginTop: 10 }}>
+          <button
+            className="pill"
+            onClick={() => { juice.select(); setRadius('all') }}
+            style={{ fontWeight: 800, borderColor: 'var(--edge)' }}
+          >
+            See every church playing →
+          </button>
+          <button
+            className="pill"
+            onClick={() => { juice.select(); setControls(true) }}
+            style={{ color: 'var(--ink-dim)' }}
+          >
+            Change distance
+          </button>
+        </div>
+        <ChurchDetailSheet />
+      </div>
+    )
+  }
 
   return (
     <div>

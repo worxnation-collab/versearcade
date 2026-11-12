@@ -1,4 +1,6 @@
 import arrangement from '@/assets/icons/arrangement.png'
+import bag from '@/assets/icons/bag.png'
+import basin from '@/assets/icons/basin.png'
 import buddies from '@/assets/icons/buddies.png'
 import customize from '@/assets/icons/customize.png'
 import firstlight from '@/assets/icons/firstlight.png'
@@ -81,6 +83,9 @@ const ICONS = {
   battle_live,
   battle_trophy,
   battle_crown,
+  // The profile's people/things pills.
+  basin,
+  bag,
 } as const
 
 export type PaintedIconId = keyof typeof ICONS

@@ -5,7 +5,7 @@ import { ChurchArt } from '@/features/church/ChurchArt'
 import { WarmPlaceholder } from '@/components/WarmPlaceholder'
 import { tierForLevel } from '@/features/church/levels'
 import { PaintedIcon, type PaintedIconId } from '@/components/PaintedIcon'
-import { gatheringLabel, gatheringOpen, gatheringWindow } from '@/data/gathering'
+import { gatheringLabel, gatheringOpen, gatheringSuitsYou, gatheringWindow } from '@/data/gathering'
 import { useChurch } from '@/store/church'
 import type { Church } from '@/types'
 import { useJuice } from '@/juice/useJuice'
@@ -184,9 +184,11 @@ function MemberCard({ church, now, onOpen }: { church: Church; now: Date; onOpen
         <Signal icon="buddies">
           {church.members === 1 ? 'You play here — invite your congregation' : `${church.members.toLocaleString()} play here`}
         </Signal>
-        <Signal icon="week" lit={open}>
-          {open ? 'The gathering hour is open now' : `Gathering hour ${gatheringWhen(now)}`}
-        </Signal>
+        {gatheringSuitsYou(now) && (
+          <Signal icon="week" lit={open}>
+            {open ? 'The gathering hour is open now' : `Gathering hour ${gatheringWhen(now)}`}
+          </Signal>
+        )}
       </div>
 
       <button onClick={onOpen} style={{ padding: 0, width: '100%', color: 'inherit', font: 'inherit', cursor: 'pointer' }}>

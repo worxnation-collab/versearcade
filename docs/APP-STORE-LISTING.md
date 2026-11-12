@@ -122,7 +122,8 @@ Start your streak today. It's one verse.
 > and the "through the App Store" plan line needs the subscriptions in §4.
 > Nothing here names a price, a web checkout or a plan bought elsewhere.
 >
-> Brought up to date 2026-10-30 with #386-#419 and the native-shell audit
+> Brought up to date 2026-11-12 with the layered wardrobe, the arcade and
+> icon repaint and the Church Office (#455-#463). Earlier: 2026-10-30 with #386-#419 and the native-shell audit
 > (`scripts/native-shell.mjs`). The whole NOTIFICATIONS block is conditional
 > on the same TestFlight push check as the line above — every note in it is an
 > APNs push (0159-0168), so if push isn't proven on a device, cut the block,
@@ -167,10 +168,16 @@ FASTER AND STEADIER
 YOUR TRANSLATION
 • Read and play in the translation you prefer, eight to choose from.
 
+YOUR CHARACTER
+• Build your character piece by piece: hair, tops, legs, shoes and hats in any colour, and a slim, standard or sturdy build.
+• Your current look stays exactly as it is until you choose to try the new wardrobe.
+• Fresh paintings across the arcade, the card backgrounds and the buttons.
+
 FOR CHURCHES
 • Your church can set a verse of its own beside the daily one, and its leaders can send you a note, on your iPhone too if you turn notifications on.
 • Leaders can claim their page, plan a week from Sunday's sermon, and subscribe to the Verified Church plan through the App Store.
 • Leaders see this week's verse, who's playing and an easy way to send a note right on their home screen — and get a heads-up when tomorrow has no verse yet.
+• Your church's verse now follows today's verse as the next step, and leaders' tools have a home of their own: the Church Office.
 ```
 
 ### 1.3.0 — the release after 1.2.0 (APPROVED)

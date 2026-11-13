@@ -351,11 +351,11 @@ export function PeoplePanel({ churchId, insights, failed, demo = false, leaders,
       )}
       {/* The roster and the quiet list are what this tab is for; the rest
           is one tap further (MoreTools.tsx says why). */}
+      {leaders && !demo && <PrayerListSection churchId={churchId} hideWhenEmpty />}
       {leaders && !demo && (
-        <MoreTools names={['Co-leaders', 'Small groups', 'Prayer list', ...(more?.names ?? [])]}>
+        <MoreTools names={['Co-leaders', 'Small groups', ...(more?.names ?? [])]}>
           <LeadersSection churchId={churchId} churchName={leaders.churchName} roster={insights.roster} onChanged={leaders.onChanged} />
           <GroupsSection churchId={churchId} roster={insights.roster} />
-          <PrayerListSection churchId={churchId} />
           {more?.content}
         </MoreTools>
       )}

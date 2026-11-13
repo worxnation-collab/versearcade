@@ -19,7 +19,10 @@ import { ago } from '../ChurchLife'
 // kneeling (no XP, the member's lantern does not light, their tally does not
 // move), no other leader sees it, and it is never drawn anywhere but here.
 
-export function PrayerListSection({ churchId }: { churchId: string }) {
+// `hideWhenEmpty`: on the People tab it stands on its own (it used to be one
+// of three things folded under More tools, so a member's signed request for
+// prayer sat two taps deep) — and draws nothing on a month with none.
+export function PrayerListSection({ churchId, hideWhenEmpty = false }: { churchId: string; hideWhenEmpty?: boolean }) {
   const juice = useJuice()
   const [notes, setNotes] = useState<PastoralPrayer[] | null>(null)
   const [failed, setFailed] = useState(false)
@@ -46,8 +49,10 @@ export function PrayerListSection({ churchId }: { churchId: string }) {
     if (next) juice.select?.()
   }
 
+  if (hideWhenEmpty && (!notes || notes.length === 0)) return null
+  const waiting = notes?.filter((n) => n.state === 'open' && !n.prayed).length ?? 0
   return (
-    <Collapsible icon="🕯️" title="Prayer list">
+    <Collapsible icon="🕯️" title="Prayer list" meta={waiting ? `${waiting} to pray for` : undefined}>
       <div data-prayer-list style={{ display: 'grid', gap: 8, minWidth: 0 }}>
         <p className="dim" style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5 }}>
           Notes your members signed on the Prayer Wall this past month. Unsigned notes stay anonymous and aren’t

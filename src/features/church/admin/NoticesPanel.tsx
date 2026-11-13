@@ -89,13 +89,12 @@ export function NoticesPanel({
           aria-label="Notice"
           style={{ resize: 'vertical' }}
         />
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: 'var(--ink-dim)', minWidth: 0 }}>
-            Show until
-            <input type="date" value={until} min={todayLocalDate()} onChange={(e) => setUntil(e.target.value)} style={{ minWidth: 0 }} />
-          </label>
-          <span className="faint" style={{ fontSize: 11.5, flexShrink: 0 }}>{message.length}/{MAX}</span>
-        </div>
+        <div className="faint" style={{ fontSize: 11.5, textAlign: 'right', marginTop: -4 }}>{message.length}/{MAX}</div>
+        {/* label ABOVE the box: beside it, "Show until" broke onto two lines at 390px */}
+        <label style={{ display: 'grid', gap: 6, fontSize: 12, fontWeight: 700, color: 'var(--ink-dim)', minWidth: 0 }}>
+          Show until (optional)
+          <input type="date" value={until} min={todayLocalDate()} onChange={(e) => setUntil(e.target.value)} style={{ minWidth: 0 }} />
+        </label>
         <p className="faint" style={{ margin: 0, fontSize: 11.5, lineHeight: 1.45 }}>
           One notice at a time — posting a new one replaces the last. Leave the date empty to keep it up
           until you change it.
@@ -153,9 +152,10 @@ export function NoticesPanel({
             </p>
           )}
           {givingMsg && <p style={{ margin: 0, fontSize: 13, color: givingMsg.ok ? 'var(--mint)' : 'var(--coral)' }}>{givingMsg.text}</p>}
-          <Button variant="secondary" full disabled={busy !== null || giving.trim() === (settings.givingUrl ?? '')} onClick={saveGiving}>
+          {/* nothing set and nothing typed: no button (a big greyed "Remove giving link" over an empty box read as broken) */}
+          {(giving.trim() || settings.givingUrl) && <Button variant="secondary" full disabled={busy !== null || giving.trim() === (settings.givingUrl ?? '')} onClick={saveGiving}>
             {busy === 'giving' ? 'Saving…' : giving.trim() ? 'Save giving link' : 'Remove giving link'}
-          </Button>
+          </Button>}
         </div>
       )}
     </div>

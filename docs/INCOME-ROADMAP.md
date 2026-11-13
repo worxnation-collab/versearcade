@@ -110,6 +110,12 @@ look and never an edge (YouVersion's model at our scale: ~$50–300/mo).
 **Not doing**: ads, consumer paywalls, sponsored placements.
 
 ## Done
+- 2026-11-13 (16:52 UTC) — research pass: first movement in two days. 195
+  accounts (+3 in a day, all three played their first verse, none attributed
+  to a funnel, none joined a church), 24 active this week (from 19). Still 0
+  inquiries, 0 plan taps, 0 claims. Nothing new built: the three owner-side
+  leads (church addresses + Resend key, long-form video, Studio run) still
+  gate the next measurable step.
 - 2026-11-13 (12:52 UTC) — research pass: unchanged (192 accounts, 0 new in a day,
   19 active this week, 0 attributed sign-ups, 0 inquiries, 0 plan taps; the two
   church claims are October's, both revoked). No new lead is worth building

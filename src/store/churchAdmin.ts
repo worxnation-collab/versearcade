@@ -1648,8 +1648,9 @@ export async function fetchMyGroupQuiet(): Promise<Res<GroupPerson[] | null>> {
 // Autopilot (0152). One switch per church: a sermon memo sent through Plan
 // drafts its own week, and when none arrives by the cutoff the pastor's saved
 // FALLBACK (a topic or one passage) drafts it instead — the same 0148 job and
-// the same week call, drafts only. There is no cron, so the cutoff is noticed
-// by `autopilotTick`, which the dashboard and the church tab send on load.
+// the same week call, drafts only. An hourly pg_cron run (0158) settles a due
+// week by itself; `autopilotTick`, which the dashboard and the church tab send
+// on load, settles it first when a leader visits sooner.
 // docs/CHURCH-SHARED-VERSE.md → "Autopilot".
 // ---------------------------------------------------------------------------
 export type AutopilotState = 'off' | 'paused' | 'memo' | 'waiting' | 'due' | 'fallback' | 'no_source' | 'covered'
@@ -1713,6 +1714,23 @@ export async function autopilotTick(churchId: string): Promise<Res<Autopilot>> {
   const d = r.data as any
   if (!d.ok) return { ok: false, reason: String(d.reason ?? 'unavailable') }
   return { ok: true, data: toAutopilot(d) }
+}
+
+/**
+ * "Draft this week now" (0179). A week the cutoff settled as `no_source` is
+ * re-opened when at least two days of its window are still empty; then the
+ * ordinary tick claims it — from the backup plan if one is saved, else from
+ * the week Verse Arcade picks — drafts only, the same week call. Saving the
+ * settings does the re-open on the server by itself (a trigger), so this is
+ * the button's door.
+ * A server before 0179 answers `unavailable` and nothing changes.
+ */
+export async function rescueAutopilotWeek(churchId: string): Promise<Res<Autopilot>> {
+  const r = await call<any>('church_autopilot_rescue', { p_church_id: churchId })
+  if (!r.ok) return r
+  const st = toAutopilot(r.data)
+  if (st.state !== 'due') return { ok: true, data: st }
+  return autopilotTick(churchId)
 }
 
 export interface AutopilotFallbackInput {

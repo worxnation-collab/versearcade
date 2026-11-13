@@ -732,6 +732,40 @@ off, waiting, no source, a fallback drafted only on empty days inside its
 window, no second claim, a failed fallback refunded and retried past the memo
 cap, the paused refusal, and the gate.
 
+### Verse Arcade picks the week (0179, 2026-11-13)
+
+Found in production: Autopilot on, no backup plan, three weeks settled as
+`no_source` (21 empty days), and a backup plan saved on the Friday changed
+nothing because the week was already claimed. The owner's call: Autopilot has
+to work for a leader who never sets a backup plan and never signs in.
+
+- **No memo and no backup plan → a default plan, not `no_source`.**
+  `church_autopilot_claim` (restated) asks `church_autopilot_default_plan`:
+  continue the church's last series when its recent live days all sit in one
+  book (the next ≤ 25 verses inside one chapter, same series name), else the
+  rotation entry (`church_autopilot_rotation`, 16 curated topics from
+  `studyTopics.ts`, asserted passage-for-passage by `check:study-topics`) the
+  church had least recently. This is the one place scripture is chosen
+  without a person naming it — every candidate is a curated passage or the
+  church's own book. The job carries references plus `usfm/chapter/start/end`
+  and no words; `church-draft` fetches the BSB from helloao when the job runs
+  (`passage_unavailable` if it can't, retryable) and stores the words on the
+  job. A saved backup plan still wins; the UI calls the default "Verse Arcade
+  picks the week" and the backup "my own topic / passage".
+- **A settled `no_source` week can still run.** `church_autopilot_reopen`
+  clears the week's row when it is `no_source`, not skipped, and ≥ 2 days of
+  the window are empty; a trigger runs it on any save that changes the backup
+  plan or switches Autopilot on, and `church_autopilot_rescue` (gated) is the
+  "Draft this week now" button on Home's "This week" card and on Plan.
+- **Switching Autopilot on goes through setup**, with "Publish each day's
+  draft … the night before" (auto-publish, 0176) ticked by default. Existing
+  settings are not changed by the migration. A ⚠ flagged day is still never
+  auto-published: a day must carry exactly five questions, so a flagged one
+  can't be dropped cleanly, and Home's "This week" card says it is waiting.
+- **Cron-only** works through 0158 unchanged: `church_autopilot_due` names the
+  leader (last setter if still gated, else the longest-standing leader who
+  is), the claim makes them the job's owner, units are the church's.
+
 ## Auto-publish (0176)
 
 One switch on Plan, under Autopilot: **"If I haven't approved it by 8pm,

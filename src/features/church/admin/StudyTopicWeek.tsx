@@ -116,6 +116,7 @@ export function StudyTopicWeek({
   backend,
   today,
   onDrafted,
+  onReview,
   onChanged,
   embedded = false,
 }: {
@@ -126,6 +127,8 @@ export function StudyTopicWeek({
   today: string
   /** After drafts were saved — reload the strip and open the first. */
   onDrafted: (dates: string[]) => void
+  /** "Review {day} →": scroll to that day and open it. Without it, `onDrafted` again. */
+  onReview?: (date: string) => void
   /** After the suggested week was discarded. */
   onChanged: () => void
 }) {
@@ -480,7 +483,7 @@ export function StudyTopicWeek({
 
           {result ? (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button className="pill" onClick={() => onDrafted(result.dates)} style={{ fontSize: 12.5, fontWeight: 800 }}>
+              <button className="pill" onClick={() => (onReview ? onReview(result.dates[0]) : onDrafted(result.dates))} style={{ fontSize: 12.5, fontWeight: 800 }}>
                 Review {pretty(result.dates[0])} →
               </button>
               {backend.discard && (

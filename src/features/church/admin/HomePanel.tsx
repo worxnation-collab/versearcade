@@ -8,9 +8,9 @@ import { Capacitor } from '@capacitor/core'
 import { APP_URL } from '@/features/daily/shareCard'
 import { FirstWeek, type FirstWeekDoor } from './FirstWeek'
 import { currentAutoWeek, useAutoWeeks } from './autoWeek'
-import { autoPublishedRow, autoRow, draftRows, inquiryRow, openDaysRow, quietRow, type HomeGo, type HomeRow } from '../../../../supabase/functions/church-digest/home.ts'
+import { autoPublishedRow, autoRow, draftRows, inquiryRow, quietRow, type HomeGo, type HomeRow } from '../../../../supabase/functions/church-digest/home.ts'
 import { useAutopilot } from './autopilot'
-import { hourLabel, useAutoPublish } from './AutoPublishToggle'
+import { useAutoPublish } from './AutoPublishToggle'
 import { useJoinInquiries } from './InquiriesSection'
 import { DigestToggle } from './DigestToggle'
 import { LeaderTop } from './LeaderTop'
@@ -116,8 +116,12 @@ export function HomePanel({
   const { jobs, reload: reloadJobs } = useAutoWeeks(churchId, verified && autoWeeks)
   // Autopilot (0152): opening Home is a visit after the cutoff — this is what
   // settles a due week. A fallback job it made shows up in the jobs above.
-  const { ap } = useAutopilot(churchId, verified && autoWeeks, () => void reloadJobs())
-  const auto = autoRow(currentAutoWeek(jobs), !!(ap?.enabled && ap.state === 'no_source'), today)
+  const { ap, setAp } = useAutopilot(churchId, verified && autoWeeks, () => void reloadJobs())
+  // "This week" at the top (LeaderTop) says what Autopilot did, including a
+  // skipped week and its "Draft this week now"; this row is left for a sermon
+  // memo's week, which that card doesn't describe.
+  const job = currentAutoWeek(jobs)
+  const auto = verified && job && !(job.autopilot && job.source === 'fallback') ? autoRow(job, false, today) : null
   if (auto) rows.push(auto)
   // Auto-publish (0176): what it put live lately, and tomorrow's draft worded
   // as going live rather than as missing.
@@ -128,15 +132,11 @@ export function HomePanel({
   // drafts / flags / inquiries / quiet rows below, built by the same functions.
 
   if (verified && days) {
-    // The open days ahead, tomorrow first (0175) — the same row the Tuesday
-    // digest carries. LeaderTop's bars show the week; this says what to do.
+    // The open days and the drafts waiting are LeaderTop's "This week" status
+    // (2026-11-13), so only the flagged-questions row is listed here. The
+    // Tuesday digest still carries all three (0175).
     const drafts = days.filter((w) => w.verse?.status === 'draft')
-    const live = days.filter((w) => w.verse && w.verse.status !== 'draft').map((w) => w.date)
-    const tomorrowDraft = drafts.find((w) => w.date === addDays(today, 1))
-    const autoAt = publish?.enabled && tomorrowDraft && !flaggedCount(tomorrowDraft.verse?.questions) ? hourLabel(publish.hour) : null
-    const open = openDaysRow(today, live, drafts.map((w) => w.date), autoAt)
-    if (open) rows.push(open)
-    rows.push(...draftRows(drafts.map((w) => ({ date: w.date, flagged: flaggedCount(w.verse?.questions) }))))
+    rows.push(...draftRows(drafts.map((w) => ({ date: w.date, flagged: flaggedCount(w.verse?.questions) }))).filter((r) => r.key !== 'drafts'))
   }
 
   const notice = settings.announcement
@@ -182,7 +182,12 @@ export function HomePanel({
           onDoor={onDoor}
         />
       )}
-      {verified && <LeaderTop churchId={churchId} today={today} days={days} insights={insights} onGo={onGo} />}
+      {verified && (
+        <LeaderTop
+          churchId={churchId} today={today} days={days} insights={insights} onGo={onGo}
+          ap={ap} setAp={setAp} publish={publish} jobs={jobs} onJob={() => void reloadJobs()}
+        />
+      )}
       <div className="home-split">
       <div className="home-split-main">
       <h2 style={{ margin: '2px 0 0', fontSize: 17, fontFamily: 'var(--font-display)' }}>{verified ? 'To do' : 'This week'}</h2>
@@ -192,8 +197,8 @@ export function HomePanel({
       )}
       {!loading && rows.length === 0 && (
         <div className="card" style={{ padding: '12px 14px', fontSize: 13.5, lineHeight: 1.5 }}>
-          <b>You’re all set for this week.</b>{' '}
-          <span className="dim">Every day has a verse, nothing is waiting on you, and your notice is up.</span>
+          <b>Nothing else needs you right now.</b>{' '}
+          <span className="dim">{verified ? 'This week’s days are above; your notice is up.' : 'Your notice is up.'}</span>
         </div>
       )}
       {rows.map((r) => (

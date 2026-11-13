@@ -272,7 +272,7 @@ export const MAP_PLACES: MapPlace[] = [
   {
     id: 'church-lead',
     icon: 'tools',
-    label: 'Leadership',
+    label: 'Church Office',
     line: 'Your church’s schedule, people and activity',
     to: '/church/lead',
     area: 'church',

@@ -60,10 +60,12 @@ const rpc = {
   church_autopilot_claim: ({ p_church_id, p_user }) => {
     if (db.ap.state !== 'due') return { state: db.ap.state, run: false }
     db.ap.claims++
-    if (!db.ap.fallback) { db.ap.state = 'no_source'; return { state: 'no_source', run: false } }
+    if (!db.ap.fallback && !db.ap.planned) { db.ap.state = 'no_source'; return { state: 'no_source', run: false } }
     const id = `00000000-0000-4000-8000-${String(++jobN).padStart(12, '0')}`
+    // 0179: no backup plan → the week Verse Arcade picks, references only.
+    const planned = [{ reference: 'John 15:1-5', book: 'John', usfm: 'JHN', chapter: 15, start: 1, end: 5 }]
     jobs.set(id, { id, church_id: p_church_id, created_by: p_user, status: 'queued', source: 'fallback', autopilot: true, memo_path: null, transcript: null,
-      series: 'Abiding', passages, guidance: 'Stay with abiding this week.', start_date: db.ap.from, days: 7, window_end: db.ap.to,
+      series: db.ap.planned ? 'Abiding (John 15)' : 'Abiding', passages: db.ap.planned ? planned : passages, guidance: 'Stay with abiding this week.', start_date: db.ap.from, days: 7, window_end: db.ap.to,
       saved: [], flagged: 0, reason: null, updated_at: new Date().toISOString() })
     db.ap.state = 'fallback'
     return { state: 'fallback', run: true, job_id: id }
@@ -150,6 +152,11 @@ globalThis.fetch = async (url, init = {}) => {
     return new Response(JSON.stringify(out), { status: 200, headers: { 'content-type': 'application/json' } })
   }
   if (url.startsWith(SB + '/storage/v1')) return storage(url, init)
+  if (url.startsWith('https://bible.helloao.org/api/BSB/')) {
+    db.bsbCalls = (db.bsbCalls ?? 0) + 1
+    if (!url.endsWith('/JHN/15.json') || db.bsbDown) return new Response('{}', { status: 404 })
+    return new Response(JSON.stringify({ chapter: { content: Object.entries(V).map(([n, text]) => ({ type: 'verse', number: Number(n), content: [text, { noteId: 1 }] })) } }))
+  }
   if (url.includes('/upload/v1beta/files') && !url.includes('upload_id')) {
     return new Response('{}', { status: files.uploadStatus, headers: files.uploadStatus === 200 ? { 'x-goog-upload-url': 'https://generativelanguage.googleapis.com/upload/v1beta/files?upload_id=1' } : {} })
   }
@@ -524,6 +531,24 @@ r = { status: 0 }
   r = { status: res.status, body: await res.json() }
 }
 check('autopilot cron: a forged impersonated header is refused', r.status === 401 && db.ap.claims === 0, r)
+
+// D. Verse Arcade picks the week (0179): no backup plan, cron only. The job
+//    names its passages without words; church-draft reads them from the BSB,
+//    keeps them on the job, and drafts as ever. A BSB outage fails the job
+//    with a retryable reason and spends nothing.
+apReset({ state: 'due', planned: true }); db.asCalls = []; db.bsbCalls = 0; db.bsbDown = false
+gemini = [{ days: [1, 2, 3, 4, 5, 1, 2].map((v) => ({ reference: `John 15:${v}`, questions: five() })) }, { items: [] }]
+r = await cron({ 'x-autopilot-token': 'cron-secret' })
+job = [...jobs.values()][0]
+check('default plan via cron: BSB fetched once, words kept on the job, week drafted as the chosen leader',
+  r.body.ok && db.bsbCalls === 1 && job?.status === 'done' && job.saved.length === 7 && job.created_by === 'u-pastor'
+    && job.passages[0].reference === 'John 15:1-5' && job.passages[0].verses.length === 5 && job.passages[0].verses[0].text === V[1], { body: r.body, job, bsb: db.bsbCalls })
+check('default plan via cron: drafts only', Object.values(db.verses).every((v) => v.status === 'draft'), db.verses)
+apReset({ state: 'due', planned: true }); db.bsbDown = true
+r = await cron({ 'x-autopilot-token': 'cron-secret' })
+job = [...jobs.values()][0]
+check('default plan, BSB down: failed passage_unavailable, no model, no units', job?.status === 'failed' && job.reason === 'passage_unavailable' && geminiCalls === 0 && db.used === 0, job)
+db.bsbDown = false
 
 console.log(fails ? `${fails} FAILED` : 'ALL PASS')
 process.exit(fails ? 1 : 0)

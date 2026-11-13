@@ -54,6 +54,7 @@ const REASONS: Record<string, string> = {
   not_saved: 'None of the days could be saved — they may have been filled meanwhile.',
   draft_failed: 'The draft didn’t come back usable.',
   no_addon: 'Content Generation isn’t on this church’s plan any more.',
+  passage_unavailable: 'The Bible text couldn’t be fetched just then.',
   not_verified: 'The church isn’t verified right now.',
 }
 export const jobReason = (j: HomeJob) =>
@@ -61,7 +62,7 @@ export const jobReason = (j: HomeJob) =>
 
 /** What the week was drafted FROM: the sermon's passages, or Autopilot's fallback. */
 export const jobFrom = (j: HomeJob) =>
-  j.source === 'fallback' ? `your Autopilot backup plan “${j.series}”` : `the sermon on ${j.references.join(', ')}`
+  j.source === 'fallback' ? `Autopilot’s plan “${j.series}”` : `the sermon on ${j.references.join(', ')}`
 
 const at = (iso: string) => {
   const [y, m, d] = iso.split('-').map(Number)
@@ -74,8 +75,13 @@ export const longDay = (iso: string) => at(iso)?.toLocaleDateString('en-US', { w
 export const dayRange = (dates: string[]) =>
   dates.length ? (dates.length === 1 ? shortDay(dates[0]) : `${shortDay(dates[0])} – ${shortDay(dates[dates.length - 1])}`) : ''
 
-/** The sermon-week / Autopilot row — Home's first row and the digest's. */
-export function autoRow(job: HomeJob | null, autopilotSkipped: boolean, today: string): HomeRow | null {
+/**
+ * The sermon-week / Autopilot row — Home's first row and the digest's.
+ * `backup` is the backup plan's label NOW (a week skipped at the cutoff may
+ * have one since), null when there is none, undefined when the caller can't
+ * tell (a digest built before that fact was sent) — then the row claims neither.
+ */
+export function autoRow(job: HomeJob | null, autopilotSkipped: boolean, today: string, backup?: string | null): HomeRow | null {
   if (job) {
     const from = jobFrom(job)
     if (jobRunning(job)) return { key: 'auto', icon: job.source === 'fallback' ? '✈️' : '🎙️', title: `Your week from ${from} is being drafted`, detail: 'Nothing to do yet — it’ll be waiting on Plan. →', go: { tab: 'plan', date: job.startDate } }
@@ -87,7 +93,14 @@ export function autoRow(job: HomeJob | null, autopilotSkipped: boolean, today: s
       go: { tab: 'plan', date: job.saved[0] ?? job.startDate },
     }
   }
-  if (autopilotSkipped) return { key: 'autopilot', icon: '✈️', title: 'Nothing drafted this week', detail: 'No sermon memo arrived by the deadline and no backup plan is set. Plan this week, or set a backup plan on Plan →', go: { tab: 'plan', date: today } }
+  if (autopilotSkipped) {
+    const detail = backup
+      ? `No sermon memo or backup plan was in place by the deadline. Your backup plan “${backup}” is set now — draft this week from it on Plan →`
+      : backup === null
+        ? 'No sermon memo arrived by the deadline. Autopilot can draft this week for you now — open Plan →'
+        : 'No sermon memo arrived by the deadline, so nothing was drafted. Plan this week on Plan →'
+    return { key: 'autopilot', icon: '✈️', title: 'Nothing drafted this week', detail, go: { tab: 'plan', date: today } }
+  }
   return null
 }
 

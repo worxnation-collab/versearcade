@@ -573,7 +573,7 @@ export default function App() {
         {/* A church's leadership tools. Behind the church wall (an account) —
             and every RPC under it re-checks leadership server-side, so the
             route is a door, not a lock. */}
-        {/* The map's Leadership row: resolves your church, then /admin. */}
+        {/* The map's Church Office row: resolves your church, then /admin. */}
         <Route
           path="/church/lead"
           element={

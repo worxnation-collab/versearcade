@@ -21,7 +21,7 @@ export interface Snapshot extends WeekNumbers {
 export interface WeekRecap {
   /** The Sunday this recap became available (YYYY-MM-DD). */
   key: string
-  /** The seven days it covers, first and last. */
+  /** The days its numbers cover, first and last (usually seven). */
   from: string
   to: string
   delta: WeekNumbers
@@ -68,5 +68,10 @@ export function deriveRecap(history: Snapshot[], today: string): WeekRecap | nul
     [...sorted].reverse().find((s) => s.date <= thisSunday && s.date > baseline.date) ??
     sorted.find((s) => s.date > thisSunday)
   if (!end || end.date === baseline.date) return null
-  return { key: thisSunday, from: addDays(lastSunday, 1), to: addDays(thisSunday, -1), delta: diff(baseline, end) }
+  // The range is the days the numbers actually cover: a day's snapshot is its
+  // LAST open, so they run from the day after the baseline to the end's day.
+  // (It used to print the Monday-to-Saturday of last week whatever the
+  // snapshots were — 'Nov 2 – Nov 7' on a recap that counted Sunday Nov 8, or
+  // days of this week when the end snapshot came from after it.)
+  return { key: thisSunday, from: addDays(baseline.date, 1), to: end.date, delta: diff(baseline, end) }
 }

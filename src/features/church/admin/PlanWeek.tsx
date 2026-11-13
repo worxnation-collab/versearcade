@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useJuice } from '@/juice/useJuice'
 import type { VerseBackend, WeekDay } from '@/store/churchAdmin'
 import { DraftReview, WeekDraftPanel } from './WeekDraftPanel'
@@ -75,6 +75,17 @@ export function PlanWeek({
 }) {
   const juice = useJuice()
   const [source, setSource] = useState<Source>('sermon')
+  // Step 3 sits at the top of the right column on a wide screen and far below
+  // on a phone; either way a finished draft used to leave it off-screen. So a
+  // drafted week brings the review into view and focuses it (2026-11-13).
+  const reviewRef = useRef<HTMLDivElement>(null)
+  const drafted = (dates: string[]) => {
+    onDrafted(dates)
+    requestAnimationFrame(() => {
+      reviewRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+      reviewRef.current?.focus({ preventScroll: true })
+    })
+  }
   const waiting = (week ?? []).some((w) => w.verse?.status === 'draft')
   const auto = useAutoWeeks(churchId, !!backend.autoWeek)
   // Autopilot (0152) rides the same package: its card, its tick, and the memo
@@ -92,7 +103,13 @@ export function PlanWeek({
         </p>
       </div>
 
-      {backend.autoWeek && <AutopilotCard churchId={churchId} ap={pilot.ap} setAp={pilot.setAp} />}
+      {backend.autoWeek && (
+        <AutopilotCard
+          churchId={churchId} ap={pilot.ap} setAp={pilot.setAp}
+          onJob={() => { void auto.reload(); onChanged() }}
+          publish={publish}
+        />
+      )}
       {backend.autoWeek && <AutoPublishToggle churchId={churchId} state={publish.state} setState={publish.setState} />}
       {backend.autoWeek && <AutoWeekCard churchId={churchId} jobs={auto.jobs} reload={auto.reload} onLanded={onChanged} />}
 
@@ -134,18 +151,18 @@ export function PlanWeek({
 
       <Step n={2} title={source === 'sermon' ? 'Draft the week from your sermon' : source === 'topic' ? 'Draft the week from a topic' : 'Draft the week from a passage'}>
         <div hidden={source !== 'sermon'}>
-          <WeekDraftPanel churchId={churchId} backend={backend} today={today} source="sermon" embedded onDrafted={onDrafted} onQueued={() => { void auto.reload(); void pilot.reload() }} autopilot={pilot.ap} />
+          <WeekDraftPanel churchId={churchId} backend={backend} today={today} source="sermon" embedded onDrafted={drafted} onQueued={() => { void auto.reload(); void pilot.reload() }} autopilot={pilot.ap} />
         </div>
         <div hidden={source !== 'topic'}>
-          <StudyTopicWeek churchId={churchId} backend={backend} today={today} embedded onDrafted={onDrafted} onChanged={onChanged} />
+          <StudyTopicWeek churchId={churchId} backend={backend} today={today} embedded onDrafted={drafted} onReview={onOpenDay} onChanged={onChanged} />
         </div>
         <div hidden={source !== 'passage'}>
-          <WeekDraftPanel churchId={churchId} backend={backend} today={today} source="passage" embedded onDrafted={onDrafted} />
+          <WeekDraftPanel churchId={churchId} backend={backend} today={today} source="passage" embedded onDrafted={drafted} />
         </div>
       </Step>
 
       </div>
-      <div className="plan-split-side">
+      <div className="plan-split-side" ref={reviewRef} tabIndex={-1} data-review-step style={{ outline: 'none', scrollMarginTop: 12 }}>
       <Step n={3} title="Review and approve">
         {/* Always mounted: once the last draft is approved it still says so. */}
         <DraftReview churchId={churchId} backend={backend} week={week} selected={selected} onOpen={onOpenDay} onChanged={onChanged} />

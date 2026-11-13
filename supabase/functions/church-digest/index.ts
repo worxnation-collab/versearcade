@@ -82,7 +82,10 @@ const plain = (s: string) => s.replace(/\s*→\s*$/, '')
 export function composeDigest(churchId: string, b: Record<string, any>): Digest {
   const today = String(b.today)
   const rows: HomeRow[] = []
-  const auto = autoRow(currentJob((b.jobs ?? []).map(toJob)), b.autopilot_skipped === true, today)
+  // `autopilot_backup` (the backup plan's label now) isn't sent by the build yet;
+  // undefined keeps the skipped row from claiming either way.
+  const backup = typeof b.autopilot_backup === 'string' ? b.autopilot_backup : b.autopilot_backup === null ? null : undefined
+  const auto = autoRow(currentJob((b.jobs ?? []).map(toJob)), b.autopilot_skipped === true, today, backup)
   if (auto) rows.push(auto)
   const drafts = (b.drafts ?? []).map((d: any) => ({ date: String(d.date), flagged: Number(d.flagged) || 0 }))
   // A server before 0175 sends no `scheduled`; no row then, rather than every day reading open.

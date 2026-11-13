@@ -5,11 +5,15 @@ import { localTimeZone } from '@/lib/date'
 import {
   autopilotTick,
   fetchAutopilot,
+  rescueAutopilotWeek,
   resolveAutopilotFallback,
   saveAutopilot,
+  setAutoPublish,
   setAutopilotSkip,
   type Autopilot,
+  type AutoPublish,
 } from '@/store/churchAdmin'
+import { hourLabel } from './AutoPublishToggle'
 
 // Autopilot (0152) — the church's week drafts itself and waits for the pastor.
 //
@@ -23,8 +27,10 @@ import {
 //   * ON + no memo by the cutoff (Monday 9pm, the church's own clock, unless
 //     the pastor sets another) → the saved FALLBACK — a topic or one passage —
 //     drafts the week instead, through the same week call.
-//   * ON + no memo + no fallback → nothing is drafted, and this card and Home
-//     say so in a quiet line. Never a week from nothing.
+//   * ON + no memo + no fallback → Verse Arcade picks the week (0179): the
+//     next passage of the church's last series' book, else the next of a fixed
+//     rotation of well-loved passages it hasn't had lately. Same week call,
+//     drafts only. The backup plan is an optional override, not a requirement.
 //
 // Switching it on with no fallback saved opens the fallback chooser FIRST and
 // only turns Autopilot on when that is saved. Switching it on midweek, after
@@ -39,9 +45,21 @@ import {
 // Every day Autopilot writes is a DRAFT: the review and approve step below is
 // unchanged, and nothing reaches a member until the pastor approves it.
 //
-// There is no cron, so the cutoff is noticed by the first visit after it: the
-// dashboard and the church tab send `autopilotTick` on load (once per page
-// load per church here), and a due week is claimed on the server exactly once.
+// An hourly pg_cron run (0158) settles a due week by itself, so a leader who
+// never signs in still gets their week. A visit notices the cutoff first if it
+// comes sooner: the dashboard and the church tab send `autopilotTick` on load
+// (once per page load per church here), and a due week is claimed on the
+// server exactly once either way.
+//
+// A week settled as "nothing drafted" before 0179 is not lost for good: saving
+// the settings re-opens it on the server when at least two of its days are
+// still empty, and the save's own tick drafts it; "Draft this week now" does
+// the same on tap.
+//
+// Switching Autopilot ON always goes through the setup panel, where
+// auto-publish (0176) is ticked by default in plain words the leader can
+// untick — so a full Autopilot publishes without anyone. Only that flow's
+// defaults changed: a church already on keeps every setting it has.
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 const ticked = new Map<string, Promise<{ ok: true; data: Autopilot } | { ok: false; reason: string }>>()
@@ -106,11 +124,13 @@ export function autopilotLine(ap: Autopilot): { tone: 'quiet' | 'gold' | 'coral'
       return {
         tone: 'quiet',
         text: `Waiting for this week’s sermon. Send the memo under “Your sermon” and the week drafts itself. ` +
-          (fb ? `If none arrives by ${cut}, it drafts from ${fb}.` : `If none arrives by ${cut}, Autopilot skips the week — add a backup plan below.`),
+          (fb ? `If none arrives by ${cut}, it drafts from ${fb}.` : `If none arrives by ${cut}, Verse Arcade picks the week for you.`),
       }
     case 'due': return { tone: 'quiet', text: 'Checking this week…' }
-    case 'fallback': return { tone: 'gold', text: `No sermon memo by ${cut}, so the week was drafted from ${fb ?? 'your backup plan'}${ap.windowFrom ? ` (${day(ap.windowFrom)} – ${day(ap.windowTo)})` : ''}. Review it below.` }
-    case 'no_source': return { tone: 'quiet', text: `Nothing drafted this week: no sermon memo arrived by ${cut} and no backup plan is set. Plan this week below, or set a backup plan so next week drafts itself.` }
+    case 'fallback': return { tone: 'gold', text: `No sermon memo by ${cut}, so the week was drafted ${fb ? `from your backup plan ${fb}` : 'from a plan Verse Arcade picked'}${ap.windowFrom ? ` (${day(ap.windowFrom)} – ${day(ap.windowTo)})` : ''}. Review it below.` }
+    case 'no_source': return fb
+      ? { tone: 'quiet', text: `Nothing was drafted this week: there was no sermon memo or backup plan by ${cut}. Your backup plan ${fb} is set now, so you can draft this week from it.` }
+      : { tone: 'quiet', text: `Nothing was drafted this week: no sermon memo arrived by ${cut}, and back then Autopilot needed a backup plan. Now Verse Arcade picks the week, so you can draft this one now.` }
     case 'covered': return { tone: 'quiet', text: 'This week was already planned, so Autopilot had nothing to draft.' }
     default: return null
   }
@@ -127,23 +147,68 @@ const FAIL: Record<string, string> = {
   topic_unclear: 'We couldn’t tie that topic to passages — try different words, or use a passage.',
   limit: 'Your church has used today’s drafts — a curated topic or a passage costs none.',
   not_set_up: 'Turn Autopilot on first.',
+  no_open_days: 'Fewer than two days this week are still empty, so there’s nothing left to draft.',
+  not_skipped: 'This week isn’t waiting any more — it’s already been settled.',
+}
+
+/**
+ * "Draft this week now" — on a week the cutoff settled with nothing drafted
+ * (0179). Drafts only; nothing goes live unless auto-publish is on. Renders
+ * nothing in any other state.
+ */
+export function RescueWeekButton({ churchId, ap, setAp, onJob, primary = false }: {
+  churchId: string
+  ap: Autopilot | null
+  setAp: (a: Autopilot) => void
+  onJob?: () => void
+  primary?: boolean
+}) {
+  const juice = useJuice()
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  if (!ap?.enabled || ap.state !== 'no_source') return null
+  const go = async () => {
+    setBusy(true); setErr(null)
+    const r = await rescueAutopilotWeek(churchId)
+    setBusy(false)
+    if (!r.ok) return setErr(FAIL[r.reason] ?? 'That didn’t go through — try again in a moment.')
+    juice.select?.()
+    setAp(r.data)
+    if (r.data.state === 'fallback' && r.data.job) onJob?.()
+  }
+  return (
+    <div style={{ display: 'grid', gap: 4, justifyItems: 'start' }} data-autopilot-rescue>
+      <Button variant={primary ? 'primary' : 'secondary'} disabled={busy} onClick={() => void go()}>
+        {busy ? 'Drafting…' : ap.fallback ? `Draft this week now from “${ap.fallback.label}”` : 'Draft this week now'}
+      </Button>
+      {err && <span role="alert" style={{ fontSize: 12, color: 'var(--coral)' }}>{err}</span>}
+    </div>
+  )
 }
 
 export function AutopilotCard({
   churchId,
   ap,
   setAp,
+  onJob,
+  publish,
 }: {
   churchId: string
   ap: Autopilot | null
   setAp: (a: Autopilot) => void
+  /** A save or a tap made a fallback job: reload the jobs and the planner. */
+  onJob?: () => void
+  /** Auto-publish (0176), so switching Autopilot on turns it on too (untickable). */
+  publish?: { state: AutoPublish | null; setState: (s: AutoPublish) => void }
 }) {
   const juice = useJuice()
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
-  // Switching on with no fallback saved: the chooser opens first, and Save turns it on.
+  // Switching on: the setup panel opens first, and its button turns it on.
   const [setup, setSetup] = useState(false)
+  // The enable flow's auto-publish box: ticked by default, untickable.
+  const [autoPub, setAutoPub] = useState(true)
   const [dow, setDow] = useState(1)
   const [time, setTime] = useState('21:00')
   const [kind, setKind] = useState<'none' | 'topic' | 'passage'>('none')
@@ -188,11 +253,20 @@ export function AutopilotCard({
     if (!r.ok) return setErr(FAIL[r.reason] ?? 'That didn’t save — try again in a moment.')
     juice.select?.()
     setAp(r.data)
+    const enabling = setup && patch.enabled === true
     if (patch.settings) { setEditing(false); setSetup(false) }
-    // Turning it on after the cutoff: settle this week now, not on the next visit.
+    // The enable flow's auto-publish box (0176). Only ever turns it ON, and
+    // only from this flow; a failure leaves Autopilot on and says so.
+    if (enabling && autoPub && publish?.state && !publish.state.enabled) {
+      const p = await setAutoPublish(churchId, true)
+      if (p.ok) publish.setState(p.data)
+      else setErr('Autopilot is on, but auto-publish didn’t switch on — turn it on below.')
+    }
+    // Turning it on after the cutoff, or settings saved for a week that was
+    // settled with nothing (0179 re-opens it): settle this week now.
     if (r.data.state === 'due') {
       const t = await autopilotTick(churchId)
-      if (t.ok) setAp(t.data)
+      if (t.ok) { setAp(t.data); if (t.data.state === 'fallback' && t.data.job) onJob?.() }
     }
   }
 
@@ -221,9 +295,10 @@ export function AutopilotCard({
           aria-label="Autopilot"
           disabled={busy}
           onClick={() => {
-            if (!ap.enabled && !ap.fallback) {
+            // Switching ON always goes through setup, with auto-publish offered ticked.
+            if (!ap.enabled) {
               openEdit()
-              setKind('topic')
+              setAutoPub(true)
               setSetup(true)
               return
             }
@@ -244,6 +319,8 @@ export function AutopilotCard({
         </p>
       )}
 
+      {!editing && <RescueWeekButton churchId={churchId} ap={ap} setAp={setAp} onJob={onJob} />}
+
       {ap.enabled && (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {ap.state === 'paused' ? (
@@ -253,14 +330,14 @@ export function AutopilotCard({
           ) : null}
           {!editing && (
             <button className="pill" disabled={busy} onClick={openEdit} style={{ fontSize: 12.5 }}>
-              {ap.fallback ? 'Deadline and backup plan' : 'Set a backup plan'}
+              {ap.fallback ? 'Deadline and backup plan' : 'Deadline, or use my own backup plan'}
             </button>
           )}
         </div>
       )}
       {ap.enabled && !editing && (
         <span className="faint" style={{ fontSize: 11.5, lineHeight: 1.45 }}>
-          Deadline {cutoffLabel(ap.cutoffDow, ap.cutoffMinute)} · Backup plan {ap.fallback ? `“${ap.fallback.label}”${ap.fallback.references.length ? ` (${ap.fallback.references.join(', ')})` : ''}` : 'none — a week with no memo is skipped'}
+          Deadline {cutoffLabel(ap.cutoffDow, ap.cutoffMinute)} · Backup plan {ap.fallback ? `“${ap.fallback.label}”${ap.fallback.references.length ? ` (${ap.fallback.references.join(', ')})` : ''}` : 'none — Verse Arcade picks the week'}
         </span>
       )}
 
@@ -268,7 +345,7 @@ export function AutopilotCard({
         <div style={{ display: 'grid', gap: 8 }}>
           {setup && (
             <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.45 }}>
-              <b>First, a backup plan.</b> If no sermon memo arrives by the deadline, Autopilot drafts the week from this instead.
+              <b>If no sermon memo arrives by the deadline,</b> Autopilot still drafts the week. Let Verse Arcade pick it, or use your own backup plan.
             </p>
           )}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
@@ -287,7 +364,7 @@ export function AutopilotCard({
             {(['none', 'topic', 'passage'] as const).map((k) => (
               <button key={k} role="radio" aria-checked={kind === k} className="pill" onClick={() => setKind(k)}
                 style={{ fontSize: 12.5, fontWeight: 800, background: kind === k ? 'var(--select)' : undefined }}>
-                {k === 'none' ? 'No backup plan' : k === 'topic' ? 'A topic' : 'A passage'}
+                {k === 'none' ? 'Verse Arcade picks the week' : k === 'topic' ? 'My own topic' : 'My own passage'}
               </button>
             ))}
           </div>
@@ -303,9 +380,18 @@ export function AutopilotCard({
           )}
           <span className="faint" style={{ fontSize: 11.5, lineHeight: 1.45 }}>
             {kind === 'none'
-              ? 'With no backup plan, a week with no sermon memo is skipped — nothing is drafted from nothing.'
+              ? 'The next passage of your last series’ book, or a well-loved passage your church hasn’t had lately (Psalms of Trust, the Sermon on the Mount, Prayer…). Drafted for you to review; the words come from the Berean Standard Bible.'
               : 'The week is drafted from this, as drafts for you to review, only when no memo arrives by the deadline. The words come from the Berean Standard Bible.'}
           </span>
+          {setup && publish?.state && !publish.state.enabled && (
+            <label data-enable-auto-publish style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', fontSize: 12.5, lineHeight: 1.45 }}>
+              <input type="checkbox" checked={autoPub} onChange={(e) => setAutoPub(e.target.checked)} style={{ marginTop: 2, width: 18, height: 18, flexShrink: 0, padding: 0 }} />
+              <span>
+                <b>Publish each day’s draft at {hourLabel(publish.state.hour)} the night before if I haven’t approved it.</b>{' '}
+                <span className="dim">So your week runs even when you’re busy. A day with a ⚠ flagged question still waits for you. Untick to approve every day yourself.</span>
+              </span>
+            </label>
+          )}
           <div style={{ display: 'flex', gap: 8 }}>
             <Button variant="secondary" disabled={busy || (kind !== 'none' && !label.trim())} onClick={() => void save(setup ? { settings: true, enabled: true } : { settings: true })}>
               {busy ? 'Saving…' : setup ? 'Turn on Autopilot' : 'Save'}

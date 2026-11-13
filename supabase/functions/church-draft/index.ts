@@ -1319,6 +1319,66 @@ async function openDates(authHeader: string, churchId: string, start: string, n:
   return out
 }
 
+// ---------------------------------------------------------------------------
+// The week Verse Arcade picks (0179). `church_autopilot_claim` writes its
+// passages as references plus where to read them — { reference, book, usfm,
+// chapter, start, end } — because SQL has no scripture. The words come from
+// the BSB on helloao (keyless, public domain), the same source the app reads,
+// and are cut to the week call's own limits: 40 verses a passage and
+// SCRIPTURE_MAX characters in all (the reference shortens to what was kept).
+// ---------------------------------------------------------------------------
+const HELLOAO = 'https://bible.helloao.org/api'
+type Planned = { reference: string; book: string; usfm: string; chapter: number; start: number; end: number }
+
+function plannedPassages(raw: unknown): raw is Planned[] {
+  return Array.isArray(raw) && raw.length >= 1 && raw.length <= 3 && raw.every((p) => {
+    const q = p as Record<string, unknown> | null
+    return !!q && typeof q === 'object' && !Array.isArray(q.verses) && typeof q.book === 'string'
+      && /^[1-3]?[A-Z]{2,3}$/.test(String(q.usfm)) && Number.isInteger(q.chapter)
+      && Number.isInteger(q.start) && Number.isInteger(q.end) && (q.end as number) >= (q.start as number)
+  })
+}
+
+async function bsbChapter(usfm: string, chapter: number): Promise<Map<number, string> | null> {
+  try {
+    const res = await fetch(`${HELLOAO}/BSB/${usfm}/${chapter}.json`)
+    if (!res.ok) return null
+    const d = await res.json() as { chapter?: { content?: Array<{ type?: string; number?: number; content?: unknown[] }> } }
+    const words = (part: unknown): string =>
+      typeof part === 'string' ? part : part && typeof part === 'object' && typeof (part as { text?: unknown }).text === 'string' ? (part as { text: string }).text : ''
+    const out = new Map<number, string>()
+    for (const c of d.chapter?.content ?? []) {
+      if (c.type !== 'verse' || !Number.isInteger(c.number)) continue
+      const t = (c.content ?? []).map(words).join(' ').replace(/\s+/g, ' ').trim()
+      if (t) out.set(c.number as number, t)
+    }
+    return out.size ? out : null
+  } catch {
+    return null
+  }
+}
+
+async function fetchPlanned(list: Planned[]): Promise<Array<{ reference: string; verses: Array<{ n: number; text: string }> }> | null> {
+  const out: Array<{ reference: string; verses: Array<{ n: number; text: string }> }> = []
+  let chars = 0
+  for (const p of list) {
+    const ch = await bsbChapter(p.usfm, p.chapter)
+    if (!ch) return null
+    const verses: Array<{ n: number; text: string }> = []
+    for (let n = p.start; n <= Math.min(p.end, p.start + 39); n++) {
+      const t = ch.get(n)
+      if (!t) continue
+      if (chars + t.length > SCRIPTURE_MAX) break
+      verses.push({ n, text: t })
+      chars += t.length
+    }
+    if (!verses.length) return null
+    const first = verses[0].n, last = verses[verses.length - 1].n
+    out.push({ reference: `${p.book} ${p.chapter}:${first}${last > first ? `-${last}` : ''}`, verses })
+  }
+  return readPassages(out) ? out : null
+}
+
 /** One step of a job: transcribe if there's no transcript yet, else draft the week. */
 async function runAutoStage(id: string, authHeader: string): Promise<void> {
   const job = await autoJob(id)
@@ -1339,11 +1399,21 @@ async function runAutoStage(id: string, authHeader: string): Promise<void> {
   }
 
   if (!(await claim(job, { status: 'drafting', reason: null }))) return
+  // A week Verse Arcade picked (0179) names its passages but carries no
+  // words: read them from the BSB now, once, and keep them on the job so a
+  // retry doesn't fetch again.
+  let passages = job.passages
+  if (!readPassages(passages) && plannedPassages(passages)) {
+    const got = await fetchPlanned(passages)
+    if (!got) return autoSet(id, { status: 'failed', reason: 'passage_unavailable' })
+    passages = got
+    await autoSet(id, { passages: got })
+  }
   const dates = await openDates(authHeader, job.church_id, job.start_date, job.days, job.window_end)
   if (!dates) return autoSet(id, { status: 'failed', reason: 'unavailable' })
   if (dates.length < WEEK_MIN) return autoSet(id, { status: 'failed', reason: 'no_open_days' })
   const w = await inner((reply) => handleWeek({
-    church_id: job.church_id, series: job.series, days: dates.length, passages: job.passages,
+    church_id: job.church_id, series: job.series, days: dates.length, passages,
     transcript: job.transcript, guidance: job.guidance ?? undefined, dates,
   }, authHeader, reply, Date.now()))
   if (!w.ok) return autoSet(id, { status: 'failed', reason: String(w.reason ?? 'unavailable') })

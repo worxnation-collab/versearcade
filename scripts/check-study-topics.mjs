@@ -53,6 +53,28 @@ for (const [, id, , list] of rows) {
   if (total > VERSES_MAX) errors.push(`${id}: ${total} verses in all, over ${VERSES_MAX}`)
 }
 
+// Autopilot's default rotation (0179, SQL) drafts from these same passages
+// with no leader in the loop, so every entry must BE a curated topic above,
+// passage for passage, and its USFM spans must say the same verses.
+{
+  const sql = await readFile(resolve(here, '../supabase/migrations/0179_church_autopilot_default.sql'), 'utf8')
+  const fn = sql.slice(sql.indexOf('function public.church_autopilot_rotation'), sql.indexOf('as r(ord, id, series, passages)'))
+  const entries = [...fn.matchAll(/\(\d+, '([^']+)', '([^']+)', '(\[.*?\])'::jsonb\)/g)]
+  if (entries.length < 10) errors.push(`autopilot rotation: only ${entries.length} entries found in 0179 — did the shape change?`)
+  const curated = new Map(rows.map(([, id, , list]) => [id, [...list.matchAll(/'([^']+)'/g)].map((m) => m[1])]))
+  for (const [, id, , json] of entries) {
+    const want = curated.get(id)
+    if (!want) { errors.push(`autopilot rotation: "${id}" is not a curated study topic`); continue }
+    const got = JSON.parse(json)
+    if (got.map((p) => p.reference).join('|') !== want.join('|')) errors.push(`autopilot rotation: "${id}" passages differ from studyTopics.ts`)
+    for (const p of got) {
+      if (`${p.book} ${p.chapter}:${p.start}-${p.end}` !== p.reference) errors.push(`autopilot rotation: "${id}" span doesn't match "${p.reference}"`)
+      if (!/^[1-3]?[A-Z]{2,3}$/.test(p.usfm)) errors.push(`autopilot rotation: "${id}" bad usfm ${p.usfm}`)
+    }
+  }
+  if (!errors.length) console.log(`✓ Autopilot rotation: ${entries.length} entries, each a curated topic`)
+}
+
 if (errors.length) {
   console.error('\n✖ Study topic check failed:\n')
   for (const e of errors) console.error(`  - ${e}`)

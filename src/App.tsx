@@ -8,6 +8,7 @@ import { useChurchCheckIns } from './store/churchCheckIns'
 import { useChurchReplies } from './store/churchReplies'
 import { useReminders } from './store/reminders'
 import { useSeason } from './store/season'
+import { activeRoad } from './data/season'
 import { useCatalog } from './store/catalog'
 import { useJuiceSync } from './juice/useJuice'
 import { inAppPath, initNative, refreshPushToken } from './lib/native'
@@ -307,7 +308,18 @@ export default function App() {
     // The content catalog, BEFORE the season store reads it. Its cache is
     // already applied at import (store/catalog.ts), so this only refreshes;
     // whichever way it goes, activeRoad() has something to answer with.
-    void useCatalog.getState().load()
+    //
+    // And when it lands, ask the season store again if the road it found is
+    // not the road there is now. With no cached catalog (a first launch, a
+    // reinstall, cleared storage) the season load below runs before the
+    // overlay arrives, finds no road, and the Pilgrimage said "The road is
+    // resting" until the next cold start, while a catalog road was live.
+    void useCatalog
+      .getState()
+      .load()
+      .then(() => {
+        if ((activeRoad()?.id ?? null) !== useSeason.getState().roadId) void useSeason.getState().load()
+      })
     // The road, app-wide rather than on the Play tab: the streak flame, the
     // Daily Chest and the confetti engine all read equipped seasonal cosmetics,
     // and none of those is behind the strip that opens the road.

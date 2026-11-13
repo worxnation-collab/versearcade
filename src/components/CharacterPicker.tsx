@@ -28,7 +28,7 @@ import {
   layerSetName,
   BUILDS,
   buildOf,
-  LAYER_REQS,
+  layerReq,
   reqLabel,
   slotItems,
   takesColor,
@@ -631,7 +631,7 @@ function LayeredBuilder({
         )}
         {ids.map((id) => {
           const have = open(id)
-          const req = LAYER_REQS[id]
+          const req = layerReq(id)
           return (
             <WardrobeTile
               key={id}

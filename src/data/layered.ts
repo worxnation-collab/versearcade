@@ -19,7 +19,9 @@
 
 import type { AvatarSpec, Build, Figure, LayerSlot, Outfit } from '@/types'
 import type { PetProgress } from '@/data/pets'
-import { LAYER_BOXES, LAYER_CANVAS, LAYER_ITEMS, type LayerBox } from '@/data/avatarLayers'
+import { LAYER_BOXES, LAYER_CANVAS, LAYER_ITEMS, type LayerBox, type LayerMeta } from '@/data/avatarLayers'
+import { catalogOverlay, type CatalogLayer } from '@/data/catalog'
+import { roadById } from '@/data/season'
 
 export type { LayerSlot, Outfit }
 export { LAYER_CANVAS }
@@ -76,10 +78,23 @@ const NAME_OVERRIDES: Record<string, string> = {
   back_fish_basket: 'Fish Basket',
   held_hammer: 'Mallet',
   head_flame_crown: 'Crown of Flame',
+  // Advent 2026
+  head_magi_crown: 'Magi’s Crown',
+  top_magi_robe: 'Robe of the East',
+  legs_magi_trousers: 'Caravan Trousers',
+  shoes_magi_slippers: 'Golden Slippers',
+  held_myrrh_casket: 'Casket of Myrrh',
+  back_magi_cape: 'Caravan Cape',
+  head_shepherd_hood: 'Shepherd’s Headcloth',
+  top_fleece_mantle: 'Fleece Mantle',
+  belt_shepherd_pouch: 'Shepherd’s Pouch',
+  held_newborn_lamb: 'Newborn Lamb',
+  held_star_lantern: 'Bethlehem Star Lantern',
 }
 
 export const layerName = (id: string): string =>
   NAME_OVERRIDES[id] ??
+  catalogLayer(id)?.name ??
   id.split('_').slice(1).join(' ').replace(/\b\w/g, (c) => c.toUpperCase())
 
 // ── What earns each piece ────────────────────────────────────────────────
@@ -91,12 +106,18 @@ export type LayerReq =
   | { kind: 'plays'; n: number }
   | { kind: 'studied'; n: number }
   | { kind: 'cpuWon'; n: number }
+  /** Reach waystation `n` on a seasonal road. Read from season_progress
+   *  (via PetProgress.roads), which outlives the road: a piece earned at
+   *  Christmas is still yours in March. Walking a road is free (BATTLE-PASS.md),
+   *  so this is earned like everything else here, never bought. */
+  | { kind: 'road'; road: string; n: number }
 
 const L = (n: number): LayerReq => ({ kind: 'level', n })
 const S = (n: number): LayerReq => ({ kind: 'streak', n })
 const W = (n: number): LayerReq => ({ kind: 'cpuWon', n })
 const V = (n: number): LayerReq => ({ kind: 'studied', n })
 const P = (n: number): LayerReq => ({ kind: 'plays', n })
+const ADVENT = (n: number): LayerReq => ({ kind: 'road', road: 'advent', n })
 
 export const LAYER_REQS: Record<string, LayerReq> = {
   // Headwear
@@ -156,6 +177,15 @@ export const LAYER_REQS: Record<string, LayerReq> = {
   head_bandana: L(3), head_pompom_beanie: L(2), head_cowboy_hat: L(8),
   top_raincoat: L(5), top_puffer_jacket: L(10), shoes_rain_boots: L(3),
   held_umbrella: L(3), held_balloon: P(2), back_guitar: L(6), back_skateboard: W(3),
+  // ── Advent 2026: the first SEASONAL pieces, earned on the Advent Road ──
+  // (Nov 29 – Jan 7). The shepherds come first, as they did (Luke 2:8-20);
+  // the Magi arrive at the end of the road, at Epiphany (Matthew 2:1-11).
+  // A player on an older build who walks the road still earns these: the
+  // waystation is recorded server-side, and the pieces open on update.
+  head_shepherd_hood: ADVENT(3), belt_shepherd_pouch: ADVENT(6), top_fleece_mantle: ADVENT(9),
+  held_newborn_lamb: ADVENT(12), held_star_lantern: ADVENT(15),
+  shoes_magi_slippers: ADVENT(18), legs_magi_trousers: ADVENT(20), held_myrrh_casket: ADVENT(23),
+  back_magi_cape: ADVENT(25), top_magi_robe: ADVENT(28), head_magi_crown: ADVENT(30),
 }
 
 /** Named sets. A set is a NAME and nothing else: it grants nothing, draws no
@@ -168,9 +198,60 @@ export const LAYER_SETS: Record<string, { name: string; ids: string[] }> = {
   nomad: { name: 'Desert Pilgrim', ids: ['head_traveler_hat', 'top_nomad_robe', 'belt_nomad_sash', 'shoes_desert_boots', 'back_waterskin'] },
   builder: { name: 'The Builder', ids: ['head_work_bandana', 'top_work_apron', 'belt_tool_belt', 'held_hammer', 'back_toolbox'] },
   starlight: { name: 'Starlight', ids: ['head_star_circlet', 'top_light_robe', 'legs_starry', 'belt_star_sash', 'back_star_wings'] },
+  // Advent 2026
+  shepherds: { name: 'Shepherds’ Watch', ids: ['head_shepherd_hood', 'top_fleece_mantle', 'belt_shepherd_pouch', 'held_newborn_lamb'] },
+  magi: { name: 'The Magi', ids: ['head_magi_crown', 'top_magi_robe', 'legs_magi_trousers', 'shoes_magi_slippers', 'held_myrrh_casket', 'back_magi_cape'] },
 }
 export const layerSetName = (id: string): string | undefined =>
-  Object.values(LAYER_SETS).find((s) => s.ids.includes(id))?.name
+  Object.values(LAYER_SETS).find((s) => s.ids.includes(id))?.name ?? catalogLayer(id)?.set
+
+// ── Pieces a season ships as data (content catalog) ──
+// A catalog layer (CatalogLayer in data/catalog.ts) is the bundled shape with
+// an https URL per figure and build, so a road can hand out a hat without a
+// release. Everything below reads the bundle FIRST: a catalog row can add a
+// piece but never replace one that shipped, so nobody's worn art can change
+// under them. Functions rather than constants because the overlay arrives at
+// runtime (the allItems() lesson in CLAUDE.md).
+function catalogLayer(id: string): CatalogLayer | undefined {
+  if (LAYER_ITEMS[id]) return undefined
+  return catalogOverlay().layers.find((l) => l.id === id)
+}
+function layerMeta(id: string): LayerMeta | undefined {
+  const m = LAYER_ITEMS[id]
+  if (m) return m
+  const c = catalogLayer(id)
+  return c ? { slot: c.slot, tint: c.tint, starter: false } : undefined
+}
+const allLayerIds = (): string[] => [
+  ...Object.keys(LAYER_ITEMS),
+  ...catalogOverlay().layers.map((l) => l.id).filter((id) => !LAYER_ITEMS[id]),
+]
+/** What earns a piece, bundled or catalog. Undefined means locked. */
+export function layerReq(id: string): LayerReq | undefined {
+  return LAYER_REQS[id] ?? catalogLayer(id)?.req
+}
+/** A road's wardrobe piece shown beside its waystation's rewards. DISPLAY
+ *  ONLY: never in a waystation's data, never sent to claim_season_reward. */
+export const PIECE_PREFIX = 'piece_'
+
+/** Every piece a seasonal road hands out (at waystation `n`, if given), for
+ *  the road screen to show beside that waystation's own rewards. */
+export function roadPieces(road: string, n?: number): string[] {
+  return allLayerIds().filter((id) => {
+    const r = layerReq(id)
+    return r?.kind === 'road' && r.road === road && (n === undefined || r.n === n)
+  })
+}
+/** The roads any piece is earned on, so the season store knows whose
+ *  progress to read after the road itself has ended. */
+export function piecesRoads(): string[] {
+  const out = new Set<string>()
+  for (const id of allLayerIds()) {
+    const r = layerReq(id)
+    if (r?.kind === 'road') out.add(r.road)
+  }
+  return [...out]
+}
 
 export const reqLabel = (r: LayerReq): string => {
   switch (r.kind) {
@@ -179,6 +260,7 @@ export const reqLabel = (r: LayerReq): string => {
     case 'plays': return `Play ${r.n} daily verses`
     case 'studied': return `Study ${r.n} verses`
     case 'cpuWon': return `Win ${r.n} CPU races`
+    case 'road': return `Waystation ${r.n} · ${roadById(r.road)?.name ?? 'a seasonal road'}`
   }
 }
 
@@ -189,27 +271,27 @@ const reqMet = (r: LayerReq, p: PetProgress): boolean => {
     case 'plays': return p.plays >= r.n
     case 'studied': return p.studied >= r.n
     case 'cpuWon': return p.cpuWon >= r.n
+    case 'road': return (p.roads?.[r.road] ?? 0) >= r.n
   }
 }
 
 export const isStarter = (id: string): boolean => !!LAYER_ITEMS[id]?.starter
-export const takesColor = (id: string): boolean => !!LAYER_ITEMS[id]?.tint
+export const takesColor = (id: string): boolean => !!layerMeta(id)?.tint
 
 /** Free pieces are always open; an earned piece with no listed requirement is
  *  treated as locked rather than free, so a new item can't ship unguarded. */
 export function layerUnlocked(id: string, p: PetProgress, admin = false): boolean {
   if (admin || isStarter(id)) return true
-  const r = LAYER_REQS[id]
+  const r = layerReq(id)
   return !!r && reqMet(r, p)
 }
 
 /** The pieces a slot offers for this figure: starter first, then by how soon
  *  they are earned. Pets live elsewhere, so the `pet` slot is never listed. */
 export function slotItems(slot: LayerSlot, figure: Figure): string[] {
-  const boxes = LAYER_BOXES[figure] ?? {}
-  const order = (id: string) => (isStarter(id) ? 0 : 1 + (LAYER_REQS[id]?.n ?? 999) / 1000)
-  return Object.keys(LAYER_ITEMS)
-    .filter((id) => LAYER_ITEMS[id].slot === slot && boxes[id])
+  const order = (id: string) => (isStarter(id) ? 0 : 1 + (layerReq(id)?.n ?? 999) / 1000)
+  return allLayerIds()
+    .filter((id) => layerMeta(id)?.slot === slot && boxIn(figure, id))
     .sort((a, b) => order(a) - order(b) || a.localeCompare(b))
 }
 
@@ -225,14 +307,29 @@ export const buildOf = (spec?: AvatarSpec | null): Build =>
 /** Where a layer's art lives: the build's own folder when it has that piece,
  *  else the standard figure's (a build that lacks a piece draws the standard
  *  one rather than a gap). */
+/** A catalog piece's box under one art key, its `__skin` companion included. */
+function catalogBox(key: string, id: string) {
+  const [base, part] = id.split('__')
+  const c = catalogLayer(base)
+  if (!c) return undefined
+  return part === 'skin' ? c.skin?.[key] : part ? undefined : c.art[key]
+}
+function boxIn(key: string, id: string): LayerBox | undefined {
+  return LAYER_BOXES[key]?.[id] ?? catalogBox(key, id)
+}
 const artKey = (figure: Figure, id: string, build: Build = 'standard'): string => {
   const k = `${figure}_${build}`
-  return build !== 'standard' && LAYER_BOXES[k]?.[id] ? k : figure
+  return build !== 'standard' && boxIn(k, id) ? k : figure
 }
-export const layerUrl = (figure: Figure, id: string, build?: Build): string =>
-  `/avatar/${artKey(figure, id, build)}/${id}.webp`
-export const layerBox = (figure: Figure, id: string, build?: Build): LayerBox | undefined =>
-  LAYER_BOXES[artKey(figure, id, build)]?.[id]
+export const layerUrl = (figure: Figure, id: string, build?: Build): string => {
+  const k = artKey(figure, id, build)
+  if (LAYER_BOXES[k]?.[id]) return `/avatar/${k}/${id}.webp`
+  return catalogBox(k, id)?.url ?? `/avatar/${k}/${id}.webp`
+}
+export const layerBox = (figure: Figure, id: string, build?: Build): LayerBox | undefined => {
+  const b = boxIn(artKey(figure, id, build), id)
+  return b ? { x: b.x, y: b.y, w: b.w, h: b.h } : undefined
+}
 
 /** The body layer for a skin tone; the bases are painted in 'sand'. */
 export function bodyId(figure: Figure, tone: string): string {

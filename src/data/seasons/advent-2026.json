@@ -1,0 +1,556 @@
+{
+  "_doc": "The Advent Road 2026 (Nov 29 - Jan 7). The bundled floor (data/season.ts reads it through sanitizeCatalog) AND the source of the published catalog's advent entries (docs/catalog/v4.json). Edit here, regenerate v4, publish. Quest pools freeze at `start`. Wardrobe pieces earned on this road live in data/layered.ts (LAYER_REQS, kind 'road').",
+  "roads": [
+    {
+      "id": "advent",
+      "name": "The Advent Road",
+      "blurb": "Shepherds by night, Magi by starlight. Walk to Bethlehem and on to Epiphany, a day at a time.",
+      "start": "2026-11-29T00:00:00Z",
+      "end": "2027-01-07T00:00:00Z",
+      "length": 30,
+      "scene": "advent",
+      "memento": "memento_advent",
+      "waystations": [
+        {
+          "n": 1,
+          "a": [
+            {
+              "id": "freeze",
+              "qty": 1
+            }
+          ],
+          "b": [
+            {
+              "id": "title_watchful"
+            }
+          ]
+        },
+        {
+          "n": 2,
+          "a": [
+            {
+              "id": "confetti_snow"
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 3,
+          "a": [
+            {
+              "id": "boost",
+              "qty": 1
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 4,
+          "a": [
+            {
+              "id": "chest_evergreen"
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 5,
+          "a": [
+            {
+              "id": "freeze",
+              "qty": 1
+            }
+          ],
+          "b": [
+            {
+              "id": "title_starlit"
+            }
+          ]
+        },
+        {
+          "n": 6,
+          "a": [
+            {
+              "id": "boost",
+              "qty": 1
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 7,
+          "a": [
+            {
+              "id": "flame_candlelight"
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 8,
+          "a": [
+            {
+              "id": "freeze",
+              "qty": 1
+            }
+          ],
+          "b": [
+            {
+              "id": "title_keeper"
+            }
+          ]
+        },
+        {
+          "n": 9,
+          "a": [
+            {
+              "id": "boost",
+              "qty": 1
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 10,
+          "a": [
+            {
+              "id": "confetti_starlight"
+            }
+          ],
+          "b": [
+            {
+              "id": "title_herald"
+            }
+          ],
+          "milestone": true
+        },
+        {
+          "n": 11,
+          "a": [
+            {
+              "id": "freeze",
+              "qty": 1
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 12,
+          "a": [
+            {
+              "id": "boost",
+              "qty": 1
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 13,
+          "a": [
+            {
+              "id": "chest_sheepfold"
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 14,
+          "a": [
+            {
+              "id": "freeze",
+              "qty": 1
+            }
+          ],
+          "b": [
+            {
+              "id": "title_bearer"
+            }
+          ]
+        },
+        {
+          "n": 15,
+          "a": [
+            {
+              "id": "boost",
+              "qty": 1
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 16,
+          "a": [
+            {
+              "id": "flame_wreath"
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 17,
+          "a": [
+            {
+              "id": "freeze",
+              "qty": 1
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 18,
+          "a": [
+            {
+              "id": "boost",
+              "qty": 1
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 19,
+          "a": [
+            {
+              "id": "confetti_magi"
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 20,
+          "a": [
+            {
+              "id": "boost",
+              "qty": 2
+            }
+          ],
+          "b": [
+            {
+              "id": "title_star_follower"
+            }
+          ],
+          "milestone": true
+        },
+        {
+          "n": 21,
+          "a": [
+            {
+              "id": "freeze",
+              "qty": 1
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 22,
+          "a": [
+            {
+              "id": "chest_magi"
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 23,
+          "a": [
+            {
+              "id": "boost",
+              "qty": 1
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 24,
+          "a": [
+            {
+              "id": "freeze",
+              "qty": 2
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 25,
+          "a": [
+            {
+              "id": "boost",
+              "qty": 1
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 26,
+          "a": [
+            {
+              "id": "flame_starlight"
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 27,
+          "a": [
+            {
+              "id": "freeze",
+              "qty": 1
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 28,
+          "a": [
+            {
+              "id": "boost",
+              "qty": 2
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 29,
+          "a": [
+            {
+              "id": "freeze",
+              "qty": 1
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 30,
+          "a": [
+            {
+              "id": "memento_advent"
+            }
+          ],
+          "b": [
+            {
+              "id": "title_wise"
+            }
+          ],
+          "milestone": true
+        }
+      ],
+      "daily": [
+        {
+          "key": "adv_play",
+          "verb": "play_daily",
+          "goal": 1,
+          "text": "Play today’s drop"
+        },
+        {
+          "key": "adv_correct",
+          "verb": "answer_correct",
+          "goal": 10,
+          "text": "Answer 10 questions correctly"
+        },
+        {
+          "key": "adv_read",
+          "verb": "read_chapters",
+          "goal": 1,
+          "text": "Read a chapter in your Bible"
+        },
+        {
+          "key": "adv_chest",
+          "verb": "open_chest",
+          "goal": 1,
+          "text": "Open the Daily Chest"
+        },
+        {
+          "key": "adv_study",
+          "verb": "study_runs",
+          "goal": 2,
+          "text": "Finish 2 study runs"
+        },
+        {
+          "key": "adv_perfect",
+          "verb": "perfect_run",
+          "goal": 1,
+          "text": "Finish a run with no misses"
+        },
+        {
+          "key": "adv_save",
+          "verb": "save_verses",
+          "goal": 1,
+          "text": "Keep a verse"
+        },
+        {
+          "key": "adv_focus",
+          "verb": "focus_drills",
+          "goal": 1,
+          "text": "Finish a focus drill"
+        },
+        {
+          "key": "adv_combo",
+          "verb": "combo",
+          "goal": 5,
+          "text": "Hit a 5× combo"
+        },
+        {
+          "key": "adv_cpu",
+          "verb": "cpu_wins",
+          "goal": 1,
+          "text": "Beat the CPU once"
+        }
+      ],
+      "weekly": [
+        {
+          "key": "advw_correct",
+          "verb": "answer_correct",
+          "goal": 60,
+          "text": "Answer 60 questions correctly"
+        },
+        {
+          "key": "advw_read",
+          "verb": "read_chapters",
+          "goal": 7,
+          "text": "Read 7 chapters"
+        },
+        {
+          "key": "advw_play",
+          "verb": "play_daily",
+          "goal": 5,
+          "text": "Play the drop on 5 days"
+        },
+        {
+          "key": "advw_study",
+          "verb": "study_runs",
+          "goal": 10,
+          "text": "Finish 10 study runs"
+        },
+        {
+          "key": "advw_share",
+          "verb": "share_daily",
+          "goal": 2,
+          "text": "Share the daily verse twice"
+        },
+        {
+          "key": "advw_focus",
+          "verb": "focus_drills",
+          "goal": 5,
+          "text": "Finish 5 focus drills"
+        },
+        {
+          "key": "advw_any",
+          "verb": "play_any",
+          "goal": 12,
+          "text": "Finish 12 runs in any mode"
+        },
+        {
+          "key": "advw_perfect",
+          "verb": "perfect_run",
+          "goal": 3,
+          "text": "Finish 3 runs with no misses"
+        },
+        {
+          "key": "advw_cpu",
+          "verb": "cpu_wins",
+          "goal": 3,
+          "text": "Beat the CPU 3 times"
+        }
+      ]
+    }
+  ],
+  "titles": [
+    {
+      "id": "title_watchful",
+      "text": "the Watchful"
+    },
+    {
+      "id": "title_starlit",
+      "text": "the Starlit"
+    },
+    {
+      "id": "title_keeper",
+      "text": "Keeper of the Flock"
+    },
+    {
+      "id": "title_herald",
+      "text": "Herald of Good News"
+    },
+    {
+      "id": "title_bearer",
+      "text": "Light-Bearer"
+    },
+    {
+      "id": "title_star_follower",
+      "text": "Star-Follower"
+    },
+    {
+      "id": "title_wise",
+      "text": "the Wise"
+    }
+  ],
+  "confetti": [
+    {
+      "id": "confetti_snow",
+      "name": "Snowfall",
+      "colors": [
+        "#ffffff",
+        "#dcecff",
+        "#a9c9f0",
+        "#7fa8d8"
+      ]
+    },
+    {
+      "id": "confetti_starlight",
+      "name": "Starlight",
+      "colors": [
+        "#fff6d0",
+        "#ffd23f",
+        "#ffffff",
+        "#cbb26a"
+      ]
+    },
+    {
+      "id": "confetti_magi",
+      "name": "Gold, Frankincense & Myrrh",
+      "colors": [
+        "#e8b84a",
+        "#fff1c9",
+        "#8a3a52",
+        "#5b2a6e",
+        "#c98a2e"
+      ]
+    }
+  ],
+  "flames": [
+    {
+      "id": "flame_candlelight",
+      "name": "Candlelight",
+      "glyph": "🕯️",
+      "rgb": "255,214,150"
+    },
+    {
+      "id": "flame_wreath",
+      "name": "Advent Wreath",
+      "glyph": "🌿",
+      "rgb": "186,140,255"
+    },
+    {
+      "id": "flame_starlight",
+      "name": "Bethlehem Star",
+      "glyph": "🌟",
+      "rgb": "255,240,190"
+    }
+  ],
+  "chests": [
+    {
+      "id": "chest_evergreen",
+      "name": "Evergreen",
+      "glyph": "🎄"
+    },
+    {
+      "id": "chest_sheepfold",
+      "name": "Sheepfold",
+      "glyph": "🐑"
+    },
+    {
+      "id": "chest_magi",
+      "name": "Treasure of the Magi",
+      "glyph": "👑"
+    }
+  ]
+}

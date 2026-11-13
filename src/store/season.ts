@@ -14,6 +14,7 @@ import {
   type Quest,
 } from '@/lib/season'
 import { poolsFor } from '@/data/catalog'
+import { PIECE_PREFIX, piecesRoads, roadPieces } from '@/data/layered'
 import {
   COSMETIC_DEFAULTS,
   activeRoad,
@@ -57,8 +58,16 @@ interface SeasonState {
   /** Daily rerolls already used, keyed by local date. */
   rerolledOn: string | null
   rerolled: string[]
+  /**
+   * Waystation reached on roads OTHER than the live one, for the wardrobe
+   * pieces earned on a road (LayerReq 'road' in data/layered.ts). Only the
+   * roads some piece names are read, once per session; season_progress keeps
+   * them after the road ends, so a Christmas piece stays earned in March.
+   */
+  marks: Record<string, number>
 
   load: () => Promise<void>
+  loadMarks: () => Promise<void>
   track: (event: TrackEvent, payload?: TrackPayload) => Promise<void>
   equip: (kind: CosmeticKind, key: string | null) => Promise<void>
   reroll: (questKey: string) => Promise<void>
@@ -186,8 +195,10 @@ export const useSeason = create<SeasonState>((set, get) => ({
   pending: null,
   rerolledOn: null,
   rerolled: [],
+  marks: {},
 
   async load() {
+    void get().loadMarks()
     const road = activeRoad()
     if (!road) {
       set({ loaded: true, roadId: null })
@@ -234,6 +245,24 @@ export const useSeason = create<SeasonState>((set, get) => ({
       rerolledOn: local.rerolledOn,
       rerolled: local.rerolled,
     })
+  },
+
+  async loadMarks() {
+    const live = activeRoad()?.id
+    const todo = piecesRoads().filter((r) => r !== live && !(r in get().marks))
+    if (todo.length === 0) return
+    const marks: Record<string, number> = {}
+    for (const r of todo) {
+      if (isOnline()) {
+        // season_json takes any road id, live or not; a failed read just
+        // leaves that road's pieces locked until the next launch.
+        const { data, error } = await supabase!.rpc('season_json', { p_road: r })
+        if (!error && data) marks[r] = Number((data as { waystation?: number }).waystation) || 0
+      } else {
+        marks[r] = waystationFor(readLocal(r).miles)
+      }
+    }
+    set({ marks: { ...get().marks, ...marks } })
   },
 
   /**
@@ -415,8 +444,16 @@ async function grantCrossed(roadId: string, from: number, to: number): Promise<v
   const road = activeRoad()
   if (!road) return
   const rewards = rewardsBetween(road, from, to)
+  // The wardrobe pieces this road hands out (LayerReq 'road', data/layered.ts)
+  // join the REVEAL only. They are never claimed: the waystation itself is the
+  // unlock, read back from season_progress, so there is nothing to write and
+  // an older build walking the same road earns them all the same.
+  const pieces: Reward[] = []
+  for (let n = from + 1; n <= to; n++) {
+    for (const id of roadPieces(road.id, n)) pieces.push({ id: PIECE_PREFIX + id })
+  }
   if (rewards.length === 0) {
-    useSeason.setState({ pending: { waystation: to, rewards: [] } })
+    useSeason.setState({ pending: { waystation: to, rewards: pieces } })
     return
   }
 
@@ -464,7 +501,7 @@ async function grantCrossed(roadId: string, from: number, to: number): Promise<v
     }
   }
 
-  useSeason.setState({ pending: { waystation: to, rewards } })
+  useSeason.setState({ pending: { waystation: to, rewards: [...rewards, ...pieces] } })
 
   // Ruth's basket fills as the road is walked. If she's equipped, upgrade the
   // stored skinId to the newest state so the change is visible the moment the

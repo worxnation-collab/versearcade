@@ -203,6 +203,51 @@ export interface CatalogItem {
   art: ItemShape[]
 }
 
+/**
+ * A piece of the LAYERED wardrobe (data/layered.ts, docs/AVATAR-LAYERS.md)
+ * that a season ships as data: its art is a cut-out image per figure and
+ * build, positioned on the shared 360x728 canvas, exactly as the bundled
+ * layers are in data/avatarLayers.ts — which is why it can arrive over the
+ * wire. A layer is an <image> with a box; there is no code in it.
+ *
+ * What it deliberately cannot do: replace a bundled piece (a bundled id
+ * always wins, so a catalog can never swap art out from under a player who
+ * already wears it), be a starter piece (free from setup is an identity
+ * decision, made in the bundle), name a slot the figure doesn't draw, or carry
+ * a price. And it must say how it is earned: a piece with no requirement is
+ * dropped, the same "no new item ships unguarded" rule LAYER_REQS keeps.
+ */
+export interface CatalogLayerBox {
+  url: string
+  x: number
+  y: number
+  w: number
+  h: number
+}
+export type CatalogLayerReq =
+  | { kind: 'level' | 'streak' | 'plays' | 'studied' | 'cpuWon'; n: number }
+  /** Reach waystation `n` on road `road`. Read from season_progress, which
+   *  outlives the road, so a piece stays earned after its season ends. */
+  | { kind: 'road'; road: string; n: number }
+export type CatalogLayerSlot = 'hair' | 'top' | 'legs' | 'shoes' | 'head' | 'held' | 'back' | 'belt'
+export interface CatalogLayer {
+  /** Slot-prefixed, like every bundled piece: `head_magi_crown`. */
+  id: string
+  slot: CatalogLayerSlot
+  /** Drawn grey and coloured at runtime (see LayeredFigure). */
+  tint: boolean
+  name: string
+  /** A set NAME, shown on the tile. Nothing else (see LAYER_SETS). */
+  set?: string
+  req: CatalogLayerReq
+  /** Per art key — `masc`, `fem`, and optionally `masc_slim`, `fem_sturdy`
+   *  and so on. masc and fem are required; a missing build draws the
+   *  standard figure's art, as a bundled piece does. */
+  art: Record<string, CatalogLayerBox>
+  /** The `<id>__skin` companion (skin-split.py), per art key, if any. */
+  skin?: Record<string, CatalogLayerBox>
+}
+
 export interface ContentCatalog {
   /** Bumped by whoever publishes; only ever used for logging and cache busting. */
   version: number
@@ -214,6 +259,8 @@ export interface ContentCatalog {
   skins: CatalogSkin[]
   /** Wearable items — the cosmetic that used to need a release. */
   items: CatalogItem[]
+  /** Layered-wardrobe pieces — see CatalogLayer. */
+  layers: CatalogLayer[]
   /** Mailbox posts — how a season announces itself. See NewsDef. */
   news: NewsDef[]
   /**
@@ -236,6 +283,7 @@ export const EMPTY_CATALOG: ContentCatalog = {
   chests: [],
   skins: [],
   items: [],
+  layers: [],
   news: [],
   art: {},
 }
@@ -574,6 +622,76 @@ function sanitizeItems(raw: unknown): CatalogItem[] {
   return out
 }
 
+const LAYER_SLOTS: CatalogLayerSlot[] = ['hair', 'top', 'legs', 'shoes', 'head', 'held', 'back', 'belt']
+const LAYER_ART_KEY = /^(masc|fem)(_(slim|sturdy))?$/
+
+/** One box on the 360x728 canvas. Generous bounds — a stretched sturdy layer
+ *  spills past the canvas by design — but finite, so a row can't ask for a
+ *  100,000px image. */
+function layerBoxes(raw: unknown): Record<string, CatalogLayerBox> {
+  const out: Record<string, CatalogLayerBox> = {}
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (!LAYER_ART_KEY.test(k) || !v || typeof v !== 'object') continue
+    const o = v as Record<string, unknown>
+    const url = artUrl(o.url)
+    const x = shapeNum(o.x, -200, 560)
+    const y = shapeNum(o.y, -100, 728)
+    const w = shapeNum(o.w, 1, 800)
+    const h = shapeNum(o.h, 1, 800)
+    if (url && x != null && y != null && w != null && h != null) out[k] = { url, x, y, w, h }
+  }
+  return out
+}
+
+function layerReq(raw: unknown): CatalogLayerReq | null {
+  if (!raw || typeof raw !== 'object') return null
+  const o = raw as Record<string, unknown>
+  const n = Number.isInteger(o.n) && (o.n as number) >= 1 && (o.n as number) <= 10_000 ? (o.n as number) : null
+  if (n == null) return null
+  if (o.kind === 'road') {
+    const road = id(o.road)
+    return road ? { kind: 'road', road, n } : null
+  }
+  if (o.kind === 'level' || o.kind === 'streak' || o.kind === 'plays' || o.kind === 'studied' || o.kind === 'cpuWon') {
+    return { kind: o.kind, n }
+  }
+  return null
+}
+
+export function sanitizeLayers(raw: unknown): CatalogLayer[] {
+  if (!Array.isArray(raw)) return []
+  const seen = new Set<string>()
+  const out: CatalogLayer[] = []
+  for (const l of raw.slice(0, 200)) {
+    if (!l || typeof l !== 'object') continue
+    const o = l as Record<string, unknown>
+    const slot = LAYER_SLOTS.find((s) => s === o.slot)
+    const i = id(o.id)
+    // The id names its slot, as every bundled piece's does: a `head_` id in the
+    // held slot is a typo that would put a crown in somebody's hand.
+    if (!slot || !i || !i.startsWith(slot + '_') || i.includes('__') || seen.has(i)) continue
+    const name = str(o.name, 40)
+    const req = layerReq(o.req)
+    const art = layerBoxes(o.art)
+    if (!name || !req || !art.masc || !art.fem) continue
+    const skin = layerBoxes(o.skin)
+    const set = str(o.set, 40)
+    seen.add(i)
+    out.push({
+      id: i,
+      slot,
+      tint: o.tint === true,
+      name,
+      req,
+      art,
+      ...(set ? { set } : {}),
+      ...(Object.keys(skin).length ? { skin } : {}),
+    })
+  }
+  return out
+}
+
 function sanitizeArt(raw: unknown): Record<string, string> {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
   const out: Record<string, string> = {}
@@ -633,6 +751,7 @@ export function sanitizeCatalog(raw: unknown): ContentCatalog {
     chests: sanitizeChests(o.chests),
     skins: sanitizeSkins(o.skins),
     items: sanitizeItems(o.items),
+    layers: sanitizeLayers(o.layers),
     news: sanitizeNews(o.news),
     art: sanitizeArt(o.art),
   }

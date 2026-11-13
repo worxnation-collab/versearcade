@@ -1,0 +1,879 @@
+{
+  "version": 4,
+  "roads": [
+    {
+      "id": "advent",
+      "name": "The Advent Road",
+      "blurb": "Shepherds by night, Magi by starlight. Walk to Bethlehem and on to Epiphany, a day at a time.",
+      "start": "2026-11-29T00:00:00Z",
+      "end": "2027-01-07T00:00:00Z",
+      "length": 30,
+      "scene": "advent",
+      "memento": "memento_advent",
+      "waystations": [
+        {
+          "n": 1,
+          "a": [
+            {
+              "id": "freeze",
+              "qty": 1
+            }
+          ],
+          "b": [
+            {
+              "id": "title_watchful"
+            }
+          ]
+        },
+        {
+          "n": 2,
+          "a": [
+            {
+              "id": "confetti_snow"
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 3,
+          "a": [
+            {
+              "id": "boost",
+              "qty": 1
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 4,
+          "a": [
+            {
+              "id": "chest_evergreen"
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 5,
+          "a": [
+            {
+              "id": "freeze",
+              "qty": 1
+            }
+          ],
+          "b": [
+            {
+              "id": "title_starlit"
+            }
+          ]
+        },
+        {
+          "n": 6,
+          "a": [
+            {
+              "id": "boost",
+              "qty": 1
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 7,
+          "a": [
+            {
+              "id": "flame_candlelight"
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 8,
+          "a": [
+            {
+              "id": "freeze",
+              "qty": 1
+            }
+          ],
+          "b": [
+            {
+              "id": "title_keeper"
+            }
+          ]
+        },
+        {
+          "n": 9,
+          "a": [
+            {
+              "id": "boost",
+              "qty": 1
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 10,
+          "a": [
+            {
+              "id": "confetti_starlight"
+            }
+          ],
+          "b": [
+            {
+              "id": "title_herald"
+            }
+          ],
+          "milestone": true
+        },
+        {
+          "n": 11,
+          "a": [
+            {
+              "id": "freeze",
+              "qty": 1
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 12,
+          "a": [
+            {
+              "id": "boost",
+              "qty": 1
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 13,
+          "a": [
+            {
+              "id": "chest_sheepfold"
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 14,
+          "a": [
+            {
+              "id": "freeze",
+              "qty": 1
+            }
+          ],
+          "b": [
+            {
+              "id": "title_bearer"
+            }
+          ]
+        },
+        {
+          "n": 15,
+          "a": [
+            {
+              "id": "boost",
+              "qty": 1
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 16,
+          "a": [
+            {
+              "id": "flame_wreath"
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 17,
+          "a": [
+            {
+              "id": "freeze",
+              "qty": 1
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 18,
+          "a": [
+            {
+              "id": "boost",
+              "qty": 1
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 19,
+          "a": [
+            {
+              "id": "confetti_magi"
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 20,
+          "a": [
+            {
+              "id": "boost",
+              "qty": 2
+            }
+          ],
+          "b": [
+            {
+              "id": "title_star_follower"
+            }
+          ],
+          "milestone": true
+        },
+        {
+          "n": 21,
+          "a": [
+            {
+              "id": "freeze",
+              "qty": 1
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 22,
+          "a": [
+            {
+              "id": "chest_magi"
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 23,
+          "a": [
+            {
+              "id": "boost",
+              "qty": 1
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 24,
+          "a": [
+            {
+              "id": "freeze",
+              "qty": 2
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 25,
+          "a": [
+            {
+              "id": "boost",
+              "qty": 1
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 26,
+          "a": [
+            {
+              "id": "flame_starlight"
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 27,
+          "a": [
+            {
+              "id": "freeze",
+              "qty": 1
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 28,
+          "a": [
+            {
+              "id": "boost",
+              "qty": 2
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 29,
+          "a": [
+            {
+              "id": "freeze",
+              "qty": 1
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 30,
+          "a": [
+            {
+              "id": "memento_advent"
+            }
+          ],
+          "b": [
+            {
+              "id": "title_wise"
+            }
+          ],
+          "milestone": true
+        }
+      ],
+      "daily": [
+        {
+          "key": "adv_play",
+          "verb": "play_daily",
+          "goal": 1,
+          "text": "Play today’s drop"
+        },
+        {
+          "key": "adv_correct",
+          "verb": "answer_correct",
+          "goal": 10,
+          "text": "Answer 10 questions correctly"
+        },
+        {
+          "key": "adv_read",
+          "verb": "read_chapters",
+          "goal": 1,
+          "text": "Read a chapter in your Bible"
+        },
+        {
+          "key": "adv_chest",
+          "verb": "open_chest",
+          "goal": 1,
+          "text": "Open the Daily Chest"
+        },
+        {
+          "key": "adv_study",
+          "verb": "study_runs",
+          "goal": 2,
+          "text": "Finish 2 study runs"
+        },
+        {
+          "key": "adv_perfect",
+          "verb": "perfect_run",
+          "goal": 1,
+          "text": "Finish a run with no misses"
+        },
+        {
+          "key": "adv_save",
+          "verb": "save_verses",
+          "goal": 1,
+          "text": "Keep a verse"
+        },
+        {
+          "key": "adv_focus",
+          "verb": "focus_drills",
+          "goal": 1,
+          "text": "Finish a focus drill"
+        },
+        {
+          "key": "adv_combo",
+          "verb": "combo",
+          "goal": 5,
+          "text": "Hit a 5× combo"
+        },
+        {
+          "key": "adv_cpu",
+          "verb": "cpu_wins",
+          "goal": 1,
+          "text": "Beat the CPU once"
+        }
+      ],
+      "weekly": [
+        {
+          "key": "advw_correct",
+          "verb": "answer_correct",
+          "goal": 60,
+          "text": "Answer 60 questions correctly"
+        },
+        {
+          "key": "advw_read",
+          "verb": "read_chapters",
+          "goal": 7,
+          "text": "Read 7 chapters"
+        },
+        {
+          "key": "advw_play",
+          "verb": "play_daily",
+          "goal": 5,
+          "text": "Play the drop on 5 days"
+        },
+        {
+          "key": "advw_study",
+          "verb": "study_runs",
+          "goal": 10,
+          "text": "Finish 10 study runs"
+        },
+        {
+          "key": "advw_share",
+          "verb": "share_daily",
+          "goal": 2,
+          "text": "Share the daily verse twice"
+        },
+        {
+          "key": "advw_focus",
+          "verb": "focus_drills",
+          "goal": 5,
+          "text": "Finish 5 focus drills"
+        },
+        {
+          "key": "advw_any",
+          "verb": "play_any",
+          "goal": 12,
+          "text": "Finish 12 runs in any mode"
+        },
+        {
+          "key": "advw_perfect",
+          "verb": "perfect_run",
+          "goal": 3,
+          "text": "Finish 3 runs with no misses"
+        },
+        {
+          "key": "advw_cpu",
+          "verb": "cpu_wins",
+          "goal": 3,
+          "text": "Beat the CPU 3 times"
+        }
+      ]
+    },
+    {
+      "id": "lamplight",
+      "end": "2026-11-29T00:00:00Z",
+      "name": "The Lamplight Road",
+      "blurb": "The harvest is in. Light a lamp, give thanks, and walk the short road to Advent.",
+      "daily": [
+        {
+          "key": "lamp_play",
+          "goal": 1,
+          "text": "Play today’s drop",
+          "verb": "play_daily"
+        },
+        {
+          "key": "lamp_correct",
+          "goal": 10,
+          "text": "Answer 10 questions correctly",
+          "verb": "answer_correct"
+        },
+        {
+          "key": "lamp_read",
+          "goal": 1,
+          "text": "Read a chapter in your Bible",
+          "verb": "read_chapters"
+        },
+        {
+          "key": "lamp_chest",
+          "goal": 1,
+          "text": "Open the Daily Chest",
+          "verb": "open_chest"
+        },
+        {
+          "key": "lamp_pray",
+          "goal": 1,
+          "text": "Say a prayer of thanks",
+          "verb": "pray"
+        },
+        {
+          "key": "lamp_save",
+          "goal": 1,
+          "text": "Keep a verse",
+          "verb": "save_verses"
+        },
+        {
+          "key": "lamp_study",
+          "goal": 2,
+          "text": "Finish 2 study runs",
+          "verb": "study_runs"
+        },
+        {
+          "key": "lamp_borrow",
+          "goal": 1,
+          "text": "Borrow a book from Tabitha",
+          "verb": "borrow_book"
+        },
+        {
+          "key": "lamp_arcade",
+          "goal": 1,
+          "text": "Play a machine in the arcade",
+          "verb": "arcade_runs"
+        },
+        {
+          "key": "lamp_perfect",
+          "goal": 1,
+          "text": "Finish a run with no misses",
+          "verb": "perfect_run"
+        }
+      ],
+      "scene": "lamplight",
+      "start": "2026-11-11T00:00:00Z",
+      "length": 15,
+      "weekly": [
+        {
+          "key": "lampw_play",
+          "goal": 5,
+          "text": "Play the drop on 5 days",
+          "verb": "play_daily"
+        },
+        {
+          "key": "lampw_read",
+          "goal": 7,
+          "text": "Read 7 chapters",
+          "verb": "read_chapters"
+        },
+        {
+          "key": "lampw_pray",
+          "goal": 7,
+          "text": "Say 7 prayers",
+          "verb": "pray"
+        },
+        {
+          "key": "lampw_prayfor",
+          "goal": 3,
+          "text": "Pray for 3 people at the Prayer Wall",
+          "verb": "pray_for"
+        },
+        {
+          "key": "lampw_wash",
+          "goal": 3,
+          "text": "Wash 3 friends’ feet",
+          "verb": "wash_feet"
+        },
+        {
+          "key": "lampw_study",
+          "goal": 8,
+          "text": "Finish 8 study runs",
+          "verb": "study_runs"
+        },
+        {
+          "key": "lampw_share",
+          "goal": 2,
+          "text": "Share the daily verse twice",
+          "verb": "share_daily"
+        },
+        {
+          "key": "lampw_correct",
+          "goal": 50,
+          "text": "Answer 50 questions correctly",
+          "verb": "answer_correct"
+        },
+        {
+          "key": "lampw_any",
+          "goal": 10,
+          "text": "Finish 10 runs in any mode",
+          "verb": "play_any"
+        }
+      ],
+      "memento": "memento_lamplight",
+      "waystations": [
+        {
+          "a": [
+            {
+              "id": "freeze",
+              "qty": 1
+            }
+          ],
+          "b": [
+            {
+              "id": "title_thankful"
+            }
+          ],
+          "n": 1
+        },
+        {
+          "a": [
+            {
+              "id": "confetti_leaves"
+            }
+          ],
+          "b": [],
+          "n": 2
+        },
+        {
+          "a": [
+            {
+              "id": "boost",
+              "qty": 1
+            }
+          ],
+          "b": [],
+          "n": 3
+        },
+        {
+          "a": [
+            {
+              "id": "chest_bushel"
+            }
+          ],
+          "b": [
+            {
+              "id": "freeze",
+              "qty": 1
+            }
+          ],
+          "n": 4
+        },
+        {
+          "a": [
+            {
+              "id": "boost",
+              "qty": 1
+            }
+          ],
+          "b": [
+            {
+              "id": "title_lampkeeper"
+            }
+          ],
+          "n": 6
+        },
+        {
+          "a": [
+            {
+              "id": "flame_hearth"
+            }
+          ],
+          "b": [
+            {
+              "id": "skin_michael"
+            }
+          ],
+          "n": 8,
+          "milestone": true
+        },
+        {
+          "a": [
+            {
+              "id": "freeze",
+              "qty": 1
+            }
+          ],
+          "b": [
+            {
+              "id": "boost",
+              "qty": 2
+            }
+          ],
+          "n": 10
+        },
+        {
+          "a": [
+            {
+              "id": "boost",
+              "qty": 2
+            }
+          ],
+          "b": [],
+          "n": 12
+        },
+        {
+          "a": [
+            {
+              "id": "memento_lamplight"
+            }
+          ],
+          "b": [
+            {
+              "id": "skin_seraph"
+            }
+          ],
+          "n": 15,
+          "milestone": true
+        }
+      ]
+    }
+  ],
+  "titles": [
+    {
+      "id": "title_starlit",
+      "text": "the Starlit"
+    },
+    {
+      "id": "title_watchful",
+      "text": "the Watchful"
+    },
+    {
+      "id": "title_bearer",
+      "text": "Light-Bearer"
+    },
+    {
+      "id": "title_thankful",
+      "text": "the Thankful"
+    },
+    {
+      "id": "title_lampkeeper",
+      "text": "Lamp-Keeper"
+    },
+    {
+      "id": "title_keeper",
+      "text": "Keeper of the Flock"
+    },
+    {
+      "id": "title_herald",
+      "text": "Herald of Good News"
+    },
+    {
+      "id": "title_star_follower",
+      "text": "Star-Follower"
+    },
+    {
+      "id": "title_wise",
+      "text": "the Wise"
+    }
+  ],
+  "confetti": [
+    {
+      "id": "confetti_snow",
+      "name": "Snowfall",
+      "colors": [
+        "#ffffff",
+        "#dcecff",
+        "#a9c9f0",
+        "#7fa8d8"
+      ]
+    },
+    {
+      "id": "confetti_starlight",
+      "name": "Starlight",
+      "colors": [
+        "#fff6d0",
+        "#ffd23f",
+        "#ffffff",
+        "#cbb26a"
+      ]
+    },
+    {
+      "id": "confetti_leaves",
+      "name": "Autumn Leaves",
+      "colors": [
+        "#c8553d",
+        "#e08e45",
+        "#f2c14e",
+        "#8c3b2e",
+        "#b5651d"
+      ]
+    },
+    {
+      "id": "confetti_magi",
+      "name": "Gold, Frankincense & Myrrh",
+      "colors": [
+        "#e8b84a",
+        "#fff1c9",
+        "#8a3a52",
+        "#5b2a6e",
+        "#c98a2e"
+      ]
+    }
+  ],
+  "flames": [
+    {
+      "id": "flame_candlelight",
+      "name": "Candlelight",
+      "glyph": "🕯️",
+      "rgb": "255,214,150"
+    },
+    {
+      "id": "flame_starlight",
+      "name": "Bethlehem Star",
+      "glyph": "🌟",
+      "rgb": "255,240,190"
+    },
+    {
+      "id": "flame_hearth",
+      "rgb": "232,120,56",
+      "name": "Hearth",
+      "glyph": "🔥"
+    },
+    {
+      "id": "flame_wreath",
+      "name": "Advent Wreath",
+      "glyph": "🌿",
+      "rgb": "186,140,255"
+    }
+  ],
+  "chests": [
+    {
+      "id": "chest_evergreen",
+      "name": "Evergreen",
+      "glyph": "🎄"
+    },
+    {
+      "id": "chest_bushel",
+      "name": "Bushel of Apples",
+      "glyph": "🍎"
+    },
+    {
+      "id": "chest_sheepfold",
+      "name": "Sheepfold",
+      "glyph": "🐑"
+    },
+    {
+      "id": "chest_magi",
+      "name": "Treasure of the Magi",
+      "glyph": "👑"
+    }
+  ],
+  "skins": [
+    {
+      "id": "gabriel",
+      "name": "Gabriel",
+      "blurb": "The announcing messenger — trumpet raised, “Do not be afraid.”",
+      "source": "pass"
+    },
+    {
+      "id": "mary",
+      "name": "Mary",
+      "blurb": "“Let it be to me according to your word.”",
+      "source": "pass"
+    },
+    {
+      "id": "joseph",
+      "name": "Joseph",
+      "blurb": "The carpenter who took the long road to Bethlehem.",
+      "source": "pass"
+    },
+    {
+      "id": "shepherd_night",
+      "name": "The Night Shepherd",
+      "blurb": "Keeping watch over the flock by night.",
+      "source": "pass"
+    },
+    {
+      "id": "magus",
+      "name": "The Magus",
+      "blurb": "One of the wise men — myrrh carried in both hands.",
+      "source": "pass"
+    },
+    {
+      "id": "bethlehem_star_bearer",
+      "name": "The Star-Follower",
+      "blurb": "Lantern up, eyes on the light that moved.",
+      "source": "pass"
+    }
+  ],
+  "news": [
+    {
+      "at": "2026-11-12",
+      "id": "wardrobe-2026-11",
+      "body": "Hair, tops, legs, shoes and hats, in any colour, plus slim, standard and sturdy builds. Your character is unchanged until you choose. To try it, open the You tab and tap Customize, then \"Try the new wardrobe\".",
+      "emoji": "👕",
+      "title": "New: build your character piece by piece",
+      "until": "2026-12-12"
+    }
+  ],
+  "art": {}
+}

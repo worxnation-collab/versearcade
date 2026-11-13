@@ -33,6 +33,7 @@ import {
   DEFAULT_ROAD_LENGTH,
   catalogOverlay,
   mergeById,
+  sanitizeCatalog,
   type ChestSkinDef,
   type ConfettiDef,
   type FlameDef,
@@ -47,6 +48,17 @@ import {
 // so every existing importer is untouched.
 export type { ChestSkinDef, ConfettiDef, FlameDef, Reward, RoadDef, TitleDef, Waystation }
 
+// ── Bundled seasons ──────────────────────────────────────────────────────────
+// A season written as a catalog document (src/data/seasons/*.json) and read
+// through the SAME sanitiser a fetched catalog goes through, so the offline
+// floor obeys exactly the rules the overlay does (a verb this build lacks is
+// dropped here too). The published catalog carries the same entries
+// (docs/catalog/), so online the overlay replaces them id for id and nothing
+// moves; offline, on a first launch or with the catalog unreachable, the road
+// is still there.
+import advent2026 from './seasons/advent-2026.json'
+const ADVENT_2026 = sanitizeCatalog(advent2026)
+
 // ── Cosmetic catalogs ────────────────────────────────────────────────────────
 // The four cheap reward types. Each is a small config object rather than art,
 // which is the whole point: a confetti theme fires on every correct answer a
@@ -60,6 +72,7 @@ export const TITLES: TitleDef[] = [
   { id: 'title_redeemer', text: 'Kinsman-Redeemer' },
   { id: 'title_lamplighter', text: 'Lamplighter' },
   { id: 'title_wayfarer', text: 'Wayfarer' },
+  ...ADVENT_2026.titles,
 ]
 
 /**
@@ -87,6 +100,7 @@ export const CONFETTI_THEMES: ConfettiDef[] = [
   { id: 'confetti_coins', name: 'Gold Coins', colors: ['#ecb860', '#e8b062', '#fff2c2', '#c9950f'], shapes: ['circle'] },
   { id: 'confetti_doves', name: 'Doves', colors: ['#ffffff', '#dfe7ff', '#b8c8f0', '#8fa3c8'] },
   { id: 'confetti_petals', name: 'Rose Petals', colors: ['#e07f6a', '#ff9fb0', '#e0518b', '#ffd6de'] },
+  ...ADVENT_2026.confetti,
 ]
 
 export const DEFAULT_CONFETTI = 'confetti_arcade'
@@ -102,6 +116,7 @@ export const FLAMES: FlameDef[] = [
   { id: 'flame_pillar', name: 'Pillar of Fire', glyph: '🌋', rgb: '255,140,60' },
   { id: 'flame_candle', name: 'Candle', glyph: '🕯️', rgb: '255,225,160' },
   { id: 'flame_star', name: 'Morning Star', glyph: '✨', rgb: '255,210,63' },
+  ...ADVENT_2026.flames,
 ]
 
 export const DEFAULT_FLAME = 'flame_ember'
@@ -115,6 +130,7 @@ export const CHEST_SKINS: ChestSkinDef[] = [
   { id: 'chest_cedar', name: 'Cedar Chest', glyph: '🗃️' },
   { id: 'chest_jar', name: 'Clay Jar', glyph: '🏺' },
   { id: 'chest_sack', name: 'Treasure Sack', glyph: '💰' },
+  ...ADVENT_2026.chests,
 ]
 
 export const DEFAULT_CHEST = 'chest_classic'
@@ -244,6 +260,8 @@ export const ROADS: RoadDef[] = [
     waystations: HARVEST_WAYS,
     memento: 'memento_harvest',
   },
+  // Nov 29 – Jan 7, and its wardrobe pieces (data/layered.ts, kind 'road').
+  ...ADVENT_2026.roads,
 ]
 
 /** How many waystations a road has when it doesn't say. The Harvest Road's 50. */

@@ -1,6 +1,7 @@
 import { useAuth } from '@/store/auth'
 import { useBible } from '@/store/bible'
 import { useKeep } from '@/store/keep'
+import { useSeason } from '@/store/season'
 import { EMPTY_PET_PROGRESS, type PetProgress } from '@/data/pets'
 
 // Everything a pet requirement asks about, gathered from wherever it lives.
@@ -27,5 +28,13 @@ export function petProgress(): PetProgress {
     plays: profile.totalPlays,
     studied: Object.keys(useBible.getState().studied).length,
     cpuWon: useKeep.getState().counters.cpu_won,
+    // The live road from the store, every other road from its marks: the
+    // wardrobe's road pieces (data/layered.ts) read this.
+    roads: roadMarks(),
   }
+}
+
+function roadMarks(): Record<string, number> {
+  const { marks, roadId, waystation } = useSeason.getState()
+  return roadId ? { ...marks, [roadId]: waystation } : marks
 }

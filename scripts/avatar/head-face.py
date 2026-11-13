@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Take the LEAKED FACE out of headwear layers.
 
-    python3 scripts/avatar/head-face.py [--dry]
+    python3 scripts/avatar/head-face.py [--dry] [--only id,id]
+
+NOT idempotent: the brim shadow is applied again on every run, so after the
+first pass run it only on NEW pieces with --only.
     python3 scripts/avatar/layers.py builds      # then: slim/sturdy are copies
 
 Every head_* layer was cut from a Kontext edit of the light base body, and on
@@ -37,13 +40,16 @@ _argv, sys.argv = sys.argv, ['head-skin.py', '--dry']
 spec.loader.exec_module(hs)
 sys.argv = _argv
 DRY = '--dry' in sys.argv
+ONLY = set(sys.argv[sys.argv.index('--only') + 1].split(',')) if '--only' in sys.argv else None
 
 BROW = 141
 CUT = {'head_explorer_hat': 1, 'head_traveler_hat': 1, 'head_traveller_hat': 1, 'head_feather_cap': 1,
        'head_straw_hat': 1, 'head_cowboy_hat': 1, 'head_fisher_cap': 1,
        'head_cap': 1, 'head_bandana': 1, 'head_work_bandana': 1,
        # a helm's cheek guards are inside the head's outline: keep a wider rim
-       'head_knight_helm': 7}
+       'head_knight_helm': 7,
+       # Advent 2026: the hood drapes OUTSIDE the head, the turban sits above it
+       'head_shepherd_hood': 1, 'head_magi_crown': 1}
 SKIN = set()
 CLEAR = {'head_crown_stars': (118, 8), 'head_halo': (118, 16)}
 # Not skin-coloured themselves, so below the brow and just outside the head's
@@ -111,6 +117,8 @@ def fix(folder, lid):
 def main():
     for folder in ('masc', 'fem'):
         for lid in sorted(k for k in hs.IDX[folder] if k.startswith('head_')):
+            if ONLY and lid not in ONLY:
+                continue
             n, im = fix(folder, lid)
             if im is None or not n:
                 continue

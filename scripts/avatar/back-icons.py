@@ -18,7 +18,7 @@ from PIL import Image
 icons = importlib.import_module('gen-icons')
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-ITEMS = json.load(open(os.path.join(ROOT, 'art', 'avatar', 'items.json')))
+ITEMS = json.load(open(os.path.join(ROOT, 'art', 'avatar', 'items.json'), encoding='utf-8'))
 ITEMS = ITEMS['items'] if isinstance(ITEMS, dict) else ITEMS
 RAW = os.path.join(ROOT, 'art', 'avatar', '.raw', 'icons'); os.makedirs(RAW, exist_ok=True)
 OUT = os.path.join(ROOT, 'public', 'avatar', 'icons'); os.makedirs(OUT, exist_ok=True)

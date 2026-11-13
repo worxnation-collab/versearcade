@@ -1045,6 +1045,76 @@
       "slot": "head",
       "tint": false,
       "prompt": "a traveller's soft brown felt hat with a wide floppy brim and a thin cord band, sitting on top of the head, the whole face fully visible and unchanged"
+    },
+    {
+      "id": "head_magi_crown",
+      "slot": "head",
+      "tint": false,
+      "prompt": "a Magi's crown: a tall wound turban of deep plum and gold silk with a gold band around it and a single bright eight-pointed star jewel at the front, sitting on top of the head, the whole face fully visible and unchanged"
+    },
+    {
+      "id": "top_magi_robe",
+      "slot": "top",
+      "tint": false,
+      "prompt": "a Magi's long royal robe to the shins in deep midnight blue, richly embroidered with gold stars and gold trim at the collar, cuffs and hem, with long sleeves, CLOSED all the way down the front so no undersuit shows. The feet stay bare: NO shoes, NO boots"
+    },
+    {
+      "id": "legs_magi_trousers",
+      "slot": "legs",
+      "tint": false,
+      "prompt": "loose flowing silk trousers in deep plum gathered at the ankles, with a thin gold band at each ankle"
+    },
+    {
+      "id": "shoes_magi_slippers",
+      "slot": "shoes",
+      "tint": false,
+      "prompt": "a pair of gold embroidered slippers with gently curled pointed toes"
+    },
+    {
+      "id": "held_myrrh_casket",
+      "slot": "held",
+      "tint": false,
+      "prompt": "a small ornate golden treasure casket with a domed lid set with red and blue jewels, held in the right hand where it already hangs, a soft glow at its seam. The magenta background stays flat magenta"
+    },
+    {
+      "id": "back_magi_cape",
+      "slot": "back",
+      "tint": false,
+      "prompt": "a long royal caravan cape in deep plum hanging from the shoulders down behind the body to the ankles, its edges trimmed with a wide gold embroidered border of small stars"
+    },
+    {
+      "id": "head_shepherd_hood",
+      "slot": "head",
+      "tint": true,
+      "prompt": "a shepherd's simple woven headcloth draped over the top of the head and falling to the shoulders, tied with a cord band around the forehead, the whole face fully visible and unchanged"
+    },
+    {
+      "id": "top_fleece_mantle",
+      "slot": "top",
+      "tint": false,
+      "prompt": "a shepherd's warm sheepskin mantle: a cream woolly fleece draped over both shoulders and down to the hips, worn over a plain brown tunic that ends at the knee. NO trousers: below the tunic the legs stay the bright green suit",
+      "band": [
+        380,
+        1000
+      ]
+    },
+    {
+      "id": "belt_shepherd_pouch",
+      "slot": "belt",
+      "tint": false,
+      "prompt": "a plain leather belt at the waist with a small brown leather shepherd's pouch hanging at the right hip"
+    },
+    {
+      "id": "held_newborn_lamb",
+      "slot": "held",
+      "tint": false,
+      "prompt": "a small fluffy white newborn lamb tucked against the right side, held in the right hand where it already hangs, its little face looking out. The magenta background stays flat magenta"
+    },
+    {
+      "id": "held_star_lantern",
+      "slot": "held",
+      "tint": false,
+      "prompt": "a glowing golden eight-pointed star-shaped lantern of pierced brass, warm light shining through its holes, hanging from a short chain in the right hand where it already hangs. The magenta background stays flat magenta"
     }
   ]
 }

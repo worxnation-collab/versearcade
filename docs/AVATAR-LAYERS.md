@@ -64,6 +64,19 @@ as they do today.
   name on the tile and nothing else: no bar, no "3 of 5", no reward for
   completing one.
 
+- **The Advent 2026 drop: 11 pieces in two sets, earned on the Advent Road**
+  (Nov 29 – Jan 7), the first SEASONAL pieces. A new requirement kind,
+  `{ kind: 'road', road, n }`, opens a piece at a waystation; the waystation
+  is read from `season_progress` (`useSeason.marks` for roads that are not
+  live, `PetProgress.roads`), which outlives the road. Shepherds' Watch comes
+  first (headcloth 3, pouch 6, fleece mantle 9, newborn lamb 12), the
+  Bethlehem Star Lantern at 15, then The Magi (golden slippers 18, caravan
+  trousers 20, casket of myrrh 23, caravan cape 25, robe of the East 28,
+  Magi's crown 30). The road's rail and the waystation reveal show them as
+  `piece_<id>` (display only, never claimed), so a 1.4.1 player who walks the
+  road sees a quiet waystation and finds the piece open on update.
+  Gideon's jar was tried and dropped: Kontext would not draw the flame.
+
 Still to do: pets in the new art (the six existing pets keep their drawn art
 and their bonuses; `public/avatar/*/pet_*.webp` is ready), bonuses for the six
 new pets, age options, and showing the full outfit on another
@@ -104,6 +117,33 @@ even relit, or a coloured hoodie paints red hands over the shoes.
 Stack order (back to front): `back` → body → `legs` → `shoes` → `top` → `belt`
 → `hair` → `head` → `held`. A back item extracted against the body will include
 anything it overlapped in front; that is fine because the body is drawn above it.
+
+## Adding a few pieces to a shipped wardrobe
+
+Most of the cleanup scripts are NOT idempotent (a brim shadow darkens again, a
+split skin is split again), and the raw renders of the shipped pieces are not
+on every machine, so a new batch runs with `--only` from end to end:
+
+```bash
+ONLY=head_magi_crown,top_magi_robe,...
+python3 scripts/avatar/layers.py gen --only $ONLY          # raw edits
+python3 scripts/avatar/layers.py extract --only $ONLY      # cut; bodies untouched
+python3 scripts/avatar/head-face.py --only <new head_ ids>  # add them to CUT/SKIN/CLEAR first
+python3 scripts/avatar/green-leak.py --only <full-colour tops/legs>
+python3 scripts/avatar/skin-split.py --only <pieces with pale hands>  # add to SPLIT first
+python3 scripts/avatar/back-icons.py --only <new back_ ids>
+python3 scripts/avatar/layers.py builds --only $ONLY       # slim + sturdy for these only
+python3 scripts/avatar/outfits.py /tmp/x.png top,head ebony   # look at it worn
+```
+
+`extract --only` no longer re-saves the body layers (body-skin.py repainted
+them after extraction), and `builds --only` leaves every other slim/sturdy file
+byte for byte as it was. `green-leak.py` is new with Advent: Kontext re-shades
+the green suit olive where an open robe or a mantle overlaps it, under
+`extract`'s hue threshold.
+
+On a desk machine the fal.ai key comes from the `FAL_KEY` environment variable
+(the cloud environment's proxy still injects it there); no file holds it.
 
 ## Running it
 

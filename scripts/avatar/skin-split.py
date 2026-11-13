@@ -4,6 +4,7 @@ renderer colours to the player's own tone.
 
     python3 scripts/avatar/skin-split.py --sheet   # review: skin found, in magenta
     python3 scripts/avatar/skin-split.py           # write <id>.webp + <id>__skin.webp
+    python3 scripts/avatar/skin-split.py --only top_magi_robe   # just these (new pieces)
     python3 scripts/avatar/layers.py builds        # then the slim/sturdy copies
 
 Every piece was cut from a Kontext edit of the light base body, so a hand on a
@@ -47,6 +48,8 @@ SPLIT = {
     'top_nomad_robe': 'hands', 'top_royal_robe': 'hands', 'top_star_robe': 'hands',
     'top_work_apron': 'hands', 'top_dress': 'hands', 'top_armor_full': 'hands',
     'shoes_sandals': 'feet', 'shoes_gold_sandals': 'feet', 'shoes_peace': 'feet',
+    # Advent 2026 (reviewed worn on ebony: pale hands at the cuffs)
+    'top_magi_robe': 'hands', 'top_fleece_mantle': 'hands',
 }
 THRESH = 3.2      # Mahalanobis distance in Lab
 MIN_BLOB = 18     # px; specks are noise, not a hand
@@ -191,6 +194,9 @@ def write():
             slot = IDX['items'].get(lid, {}).get('slot')
             if slot not in SLOTS or lid in KEEP or lid not in SPLIT:
                 continue
+            # NOT idempotent once split: run new pieces alone with --only.
+            if PICK and lid not in PICK:
+                continue
             lay, box, m, cuff = find(folder, lid)
             if m.sum() < MIN_BLOB:
                 continue
@@ -215,11 +221,12 @@ def write():
                 os.path.join(AV, folder, lid + '.webp'), 'WEBP', quality=88, method=6)
             changed += 1
             print(f'{folder}/{lid}: {int(m.sum())} px of skin', flush=True)
-    json.dump(IDX, open(IDX_PATH, 'w'), indent=1, sort_keys=True)
+    json.dump(IDX, open(IDX_PATH, 'w', newline='\n'), indent=1, sort_keys=True)
     print(changed, 'layers split')
 
 
 ONLY = '--all' not in sys.argv
+PICK = set(sys.argv[sys.argv.index('--only') + 1].split(',')) if '--only' in sys.argv else None
 
 if __name__ == '__main__':
     if '--sheet' in sys.argv:

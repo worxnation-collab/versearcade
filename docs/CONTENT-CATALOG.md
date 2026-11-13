@@ -22,8 +22,8 @@ Now the bundled catalog is the **floor** and a fetched overlay merges over it.
 
 | | |
 |---|---|
-| **Can** | Roads (window, waystations, rewards, blurb, length, **backdrop painting**), their quest lists, titles, confetti themes, streak flames, chest skins, free/earned/road skins, and the art URL for any of them |
-| **Cannot** | Quest **verbs**, reward **kinds**, wearable **items**, drawn-SVG art, screens, prices |
+| **Can** | Roads (window, waystations, rewards, blurb, length, **backdrop painting**), their quest lists, titles, confetti themes, streak flames, chest skins, free/earned/road skins, and the art URL for any of them. From the build after 1.4.1: **layered-wardrobe pieces** (`layers`, below) |
+| **Cannot** | Quest **verbs**, reward **kinds**, drawn-SVG art, screens, prices. On 1.4.1 and older: wardrobe pieces |
 
 Three of those are worth explaining, because they're the ones you'll hit.
 
@@ -49,6 +49,44 @@ may sell anything lives in `lib/commerce.ts` and nowhere else (see CLAUDE.md); a
 price in a row an operator can edit is a storefront that skipped review, which
 is against the rules in every storefront but the US one. This is also mostly
 moot now — cosmetics aren’t sold at all, the founding patron (`cephas`) excepted.
+
+### Layered-wardrobe pieces (`layers`) — the gap, closed in the next build
+
+The layered wardrobe (`docs/AVATAR-LAYERS.md`) shipped in 1.4.1 with every
+piece COMPILED IN: its box on the canvas (`data/avatarLayers.ts`), its slot,
+its unlock (`LAYER_REQS`) and a bundled `/avatar/...` path. So on 1.4.1 a
+catalog cannot add a hat, and the Advent 2026 pieces are a release.
+
+The build after 1.4.1 reads `catalog.layers` (`CatalogLayer` in
+`data/catalog.ts`): a piece is an id, a slot, a name, an optional set name, a
+requirement, and a box plus https URL per art key (`masc`, `fem`, optionally
+`masc_slim`, `fem_sturdy`...), with an optional `skin` map for its `__skin`
+companion. That is everything `LayeredFigure` needs, and it is an `<image>` with
+a box, so nothing in it executes. From that build on, a season's pieces ship
+like its road: cut them with `scripts/avatar/layers.py`, put the webp files on
+an https host (versearcade.org/avatar/... or a public Storage bucket), and copy
+each box out of `public/avatar/index.json` into the row.
+
+The rules the sanitiser and `data/layered.ts` keep:
+
+- **A bundled id always wins.** A row naming a piece that shipped is ignored, so
+  nobody's worn art can be swapped under them.
+- **No requirement, no piece.** A row without a readable `req` is dropped
+  (LAYER_REQS's own "nothing ships unguarded"). Never `starter`: free-at-setup
+  is an identity decision made in the bundle.
+- **`req.kind: 'road'`** (`{ kind: 'road', road: 'advent', n: 12 }`) opens the
+  piece at a waystation. It is read from `season_progress`, which outlives the
+  road, so the piece stays earned after the season. A road's pieces are shown
+  on its rail and in the waystation reveal by the app itself; they are NOT
+  listed in `waystations` (an older build would show the raw id) and are never
+  claimed.
+- `masc` and `fem` art are required; a missing build falls back to the standard
+  figure's art, as a bundled piece does.
+
+A road can therefore be published for every build at once: cosmetics in its
+waystations for everybody, wardrobe pieces as `layers` for the builds that
+read them, and a player on an old build who walks the road still has the
+waystation on record when they update.
 
 ## The three rules
 
@@ -161,6 +199,15 @@ meant. Two roads with the same start is undefined — don't.
   "art":      { "magus": "https://<project>.supabase.co/storage/v1/object/public/skins/magus.png" }
 }
 ```
+
+### The published documents
+
+`docs/catalog/v3.json` is what was live on 2026-11-13 (fetched through the
+anon `content_catalog` RPC); `docs/catalog/v4.json` is v3 with the Advent 2026
+season laid over it by id. The season itself is written once, in
+`src/data/seasons/advent-2026.json`, which is ALSO the bundled floor
+(`data/season.ts` reads it through `sanitizeCatalog`). Edit the season file,
+rebuild v4 from it, publish v4: the bundle and the overlay can't drift apart.
 
 ### Field rules the sanitisers enforce
 

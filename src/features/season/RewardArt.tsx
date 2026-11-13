@@ -3,6 +3,8 @@ import { Avatar } from '@/components/Avatar'
 import { itemArt } from '@/data/avatar'
 import { confettiById, flameById, chestSkinById, cosmeticKind, rewardLabel } from '@/data/season'
 import { rewardArt } from '@/data/rewardArt'
+import { PIECE_PREFIX, layerName, layerUrl } from '@/data/layered'
+import { figureOf } from '@/data/avatar'
 
 // A road reward, drawn as the THING rather than named.
 //
@@ -36,6 +38,27 @@ export function RewardArt({
     opacity: dim ? 0.72 : 1,
     filter: dim ? 'saturate(0.7)' : undefined,
   }
+  // A road's wardrobe piece: the layer itself, cut out, in the player's own
+  // figure (a back piece is only what shows AROUND a body, so it uses its
+  // wardrobe icon, as the builder's tiles do).
+  if (id.startsWith(PIECE_PREFIX)) {
+    const piece = id.slice(PIECE_PREFIX.length)
+    const src = piece.startsWith('back_')
+      ? `/avatar/icons/${piece}.webp`
+      : layerUrl(spec ? figureOf(spec) : 'masc', piece)
+    return (
+      <div style={box} title={layerName(piece)} aria-hidden>
+        <img
+          src={src}
+          alt=""
+          loading="lazy"
+          draggable={false}
+          style={{ maxWidth: size * 0.86, maxHeight: size * 0.86, objectFit: 'contain' }}
+        />
+      </div>
+    )
+  }
+
   const kind = cosmeticKind(id)
   const label = rewardLabel(id)
 

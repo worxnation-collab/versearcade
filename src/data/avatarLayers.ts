@@ -80,6 +80,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 246,
    "y": 346
   },
+  "back_magi_cape": {
+   "h": 475,
+   "w": 337,
+   "x": 12,
+   "y": 195
+  },
   "back_quiver": {
    "h": 246,
    "w": 169,
@@ -163,6 +169,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 115,
    "x": 123,
    "y": 326
+  },
+  "belt_shepherd_pouch": {
+   "h": 84,
+   "w": 134,
+   "x": 104,
+   "y": 355
   },
   "belt_star_sash": {
    "h": 64,
@@ -434,6 +446,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 118,
    "y": 61
   },
+  "head_magi_crown": {
+   "h": 216,
+   "w": 149,
+   "x": 105,
+   "y": 20
+  },
   "head_olive_wreath": {
    "h": 141,
    "w": 153,
@@ -445,6 +463,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 102,
    "x": 130,
    "y": 43
+  },
+  "head_shepherd_hood": {
+   "h": 143,
+   "w": 164,
+   "x": 98,
+   "y": 94
   },
   "head_star_circlet": {
    "h": 46,
@@ -560,6 +584,18 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 183,
    "y": 291
   },
+  "held_myrrh_casket": {
+   "h": 92,
+   "w": 94,
+   "x": 204,
+   "y": 445
+  },
+  "held_newborn_lamb": {
+   "h": 129,
+   "w": 100,
+   "x": 191,
+   "y": 352
+  },
   "held_scroll": {
    "h": 69,
    "w": 84,
@@ -589,6 +625,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 39,
    "x": 68,
    "y": 315
+  },
+  "held_star_lantern": {
+   "h": 221,
+   "w": 179,
+   "x": 54,
+   "y": 453
   },
   "held_star_staff": {
    "h": 599,
@@ -685,6 +727,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 174,
    "x": 95,
    "y": 374
+  },
+  "legs_magi_trousers": {
+   "h": 284,
+   "w": 144,
+   "x": 107,
+   "y": 365
   },
   "legs_rolled_trousers": {
    "h": 303,
@@ -836,6 +884,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 103,
    "y": 623
   },
+  "shoes_magi_slippers": {
+   "h": 49,
+   "w": 155,
+   "x": 103,
+   "y": 626
+  },
   "shoes_peace": {
    "h": 42,
    "w": 142,
@@ -944,6 +998,18 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 79,
    "y": 199
   },
+  "top_fleece_mantle": {
+   "h": 304,
+   "w": 245,
+   "x": 57,
+   "y": 198
+  },
+  "top_fleece_mantle__skin": {
+   "h": 117,
+   "w": 186,
+   "x": 85,
+   "y": 346
+  },
   "top_hoodie": {
    "h": 225,
    "w": 206,
@@ -973,6 +1039,18 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 192,
    "x": 84,
    "y": 214
+  },
+  "top_magi_robe": {
+   "h": 461,
+   "w": 298,
+   "x": 31,
+   "y": 200
+  },
+  "top_magi_robe__skin": {
+   "h": 48,
+   "w": 199,
+   "x": 79,
+   "y": 419
   },
   "top_many_colors": {
    "h": 476,
@@ -1168,6 +1246,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 236,
    "y": 346
   },
+  "back_magi_cape": {
+   "h": 475,
+   "w": 289,
+   "x": 36,
+   "y": 195
+  },
   "back_quiver": {
    "h": 246,
    "w": 160,
@@ -1251,6 +1335,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 97,
    "x": 132,
    "y": 328
+  },
+  "belt_shepherd_pouch": {
+   "h": 84,
+   "w": 113,
+   "x": 116,
+   "y": 355
   },
   "belt_star_sash": {
    "h": 62,
@@ -1522,6 +1612,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 118,
    "y": 61
   },
+  "head_magi_crown": {
+   "h": 194,
+   "w": 149,
+   "x": 105,
+   "y": 20
+  },
   "head_olive_wreath": {
    "h": 141,
    "w": 153,
@@ -1533,6 +1629,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 102,
    "x": 130,
    "y": 43
+  },
+  "head_shepherd_hood": {
+   "h": 142,
+   "w": 140,
+   "x": 110,
+   "y": 94
   },
   "head_star_circlet": {
    "h": 46,
@@ -1648,6 +1750,18 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 173,
    "y": 291
   },
+  "held_myrrh_casket": {
+   "h": 92,
+   "w": 94,
+   "x": 194,
+   "y": 445
+  },
+  "held_newborn_lamb": {
+   "h": 129,
+   "w": 100,
+   "x": 182,
+   "y": 352
+  },
   "held_scroll": {
    "h": 69,
    "w": 84,
@@ -1677,6 +1791,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 39,
    "x": 81,
    "y": 315
+  },
+  "held_star_lantern": {
+   "h": 221,
+   "w": 179,
+   "x": 59,
+   "y": 453
   },
   "held_star_staff": {
    "h": 599,
@@ -1774,6 +1894,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 108,
    "y": 374
   },
+  "legs_magi_trousers": {
+   "h": 284,
+   "w": 121,
+   "x": 119,
+   "y": 365
+  },
   "legs_rolled_trousers": {
    "h": 301,
    "w": 110,
@@ -1851,6 +1977,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 133,
    "x": 114,
    "y": 624
+  },
+  "shoes_magi_slippers": {
+   "h": 49,
+   "w": 131,
+   "x": 115,
+   "y": 626
   },
   "shoes_peace": {
    "h": 42,
@@ -1960,6 +2092,18 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 94,
    "y": 199
   },
+  "top_fleece_mantle": {
+   "h": 304,
+   "w": 208,
+   "x": 76,
+   "y": 198
+  },
+  "top_fleece_mantle__skin": {
+   "h": 117,
+   "w": 161,
+   "x": 98,
+   "y": 346
+  },
   "top_hoodie": {
    "h": 225,
    "w": 176,
@@ -1989,6 +2133,18 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 164,
    "x": 98,
    "y": 214
+  },
+  "top_magi_robe": {
+   "h": 461,
+   "w": 254,
+   "x": 53,
+   "y": 200
+  },
+  "top_magi_robe__skin": {
+   "h": 48,
+   "w": 172,
+   "x": 93,
+   "y": 419
   },
   "top_many_colors": {
    "h": 476,
@@ -2184,6 +2340,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 259,
    "y": 346
   },
+  "back_magi_cape": {
+   "h": 475,
+   "w": 403,
+   "x": -21,
+   "y": 195
+  },
   "back_quiver": {
    "h": 246,
    "w": 179,
@@ -2267,6 +2429,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 135,
    "x": 113,
    "y": 328
+  },
+  "belt_shepherd_pouch": {
+   "h": 84,
+   "w": 158,
+   "x": 90,
+   "y": 355
   },
   "belt_star_sash": {
    "h": 62,
@@ -2538,6 +2706,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 118,
    "y": 61
   },
+  "head_magi_crown": {
+   "h": 194,
+   "w": 149,
+   "x": 105,
+   "y": 20
+  },
   "head_olive_wreath": {
    "h": 141,
    "w": 153,
@@ -2549,6 +2723,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 102,
    "x": 130,
    "y": 43
+  },
+  "head_shepherd_hood": {
+   "h": 142,
+   "w": 191,
+   "x": 84,
+   "y": 94
   },
   "head_star_circlet": {
    "h": 46,
@@ -2664,6 +2844,18 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 197,
    "y": 291
   },
+  "held_myrrh_casket": {
+   "h": 92,
+   "w": 94,
+   "x": 218,
+   "y": 445
+  },
+  "held_newborn_lamb": {
+   "h": 129,
+   "w": 100,
+   "x": 203,
+   "y": 352
+  },
   "held_scroll": {
    "h": 69,
    "w": 84,
@@ -2693,6 +2885,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 39,
    "x": 50,
    "y": 315
+  },
+  "held_star_lantern": {
+   "h": 221,
+   "w": 179,
+   "x": 47,
+   "y": 453
   },
   "held_star_staff": {
    "h": 599,
@@ -2790,6 +2988,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 78,
    "y": 374
   },
+  "legs_magi_trousers": {
+   "h": 284,
+   "w": 171,
+   "x": 94,
+   "y": 365
+  },
   "legs_rolled_trousers": {
    "h": 301,
    "w": 157,
@@ -2867,6 +3071,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 185,
    "x": 88,
    "y": 624
+  },
+  "shoes_magi_slippers": {
+   "h": 49,
+   "w": 183,
+   "x": 89,
+   "y": 626
   },
   "shoes_peace": {
    "h": 42,
@@ -2976,6 +3186,18 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 60,
    "y": 199
   },
+  "top_fleece_mantle": {
+   "h": 304,
+   "w": 291,
+   "x": 34,
+   "y": 198
+  },
+  "top_fleece_mantle__skin": {
+   "h": 117,
+   "w": 225,
+   "x": 65,
+   "y": 346
+  },
   "top_hoodie": {
    "h": 225,
    "w": 245,
@@ -3005,6 +3227,18 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 229,
    "x": 66,
    "y": 214
+  },
+  "top_magi_robe": {
+   "h": 461,
+   "w": 355,
+   "x": 3,
+   "y": 200
+  },
+  "top_magi_robe__skin": {
+   "h": 48,
+   "w": 240,
+   "x": 58,
+   "y": 419
   },
   "top_many_colors": {
    "h": 476,
@@ -3200,6 +3434,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 89,
    "y": 370
   },
+  "back_magi_cape": {
+   "h": 458,
+   "w": 333,
+   "x": 14,
+   "y": 208
+  },
   "back_quiver": {
    "h": 259,
    "w": 172,
@@ -3277,6 +3517,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 135,
    "x": 112,
    "y": 337
+  },
+  "belt_shepherd_pouch": {
+   "h": 86,
+   "w": 135,
+   "x": 103,
+   "y": 359
   },
   "belt_star_sash": {
    "h": 115,
@@ -3548,6 +3794,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 102,
    "y": 51
   },
+  "head_magi_crown": {
+   "h": 220,
+   "w": 137,
+   "x": 111,
+   "y": 17
+  },
   "head_olive_wreath": {
    "h": 171,
    "w": 206,
@@ -3559,6 +3811,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 106,
    "x": 126,
    "y": 36
+  },
+  "head_shepherd_hood": {
+   "h": 140,
+   "w": 158,
+   "x": 101,
+   "y": 97
   },
   "head_star_circlet": {
    "h": 46,
@@ -3674,6 +3932,18 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 54,
    "y": 325
   },
+  "held_myrrh_casket": {
+   "h": 90,
+   "w": 79,
+   "x": 55,
+   "y": 449
+  },
+  "held_newborn_lamb": {
+   "h": 136,
+   "w": 97,
+   "x": 194,
+   "y": 400
+  },
   "held_scroll": {
    "h": 62,
    "w": 81,
@@ -3703,6 +3973,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 47,
    "x": 65,
    "y": 300
+  },
+  "held_star_lantern": {
+   "h": 105,
+   "w": 89,
+   "x": 51,
+   "y": 454
   },
   "held_star_staff": {
    "h": 604,
@@ -3799,6 +4075,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 175,
    "x": 92,
    "y": 349
+  },
+  "legs_magi_trousers": {
+   "h": 256,
+   "w": 131,
+   "x": 115,
+   "y": 363
   },
   "legs_rolled_trousers": {
    "h": 213,
@@ -3944,6 +4226,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 102,
    "y": 623
   },
+  "shoes_magi_slippers": {
+   "h": 52,
+   "w": 157,
+   "x": 102,
+   "y": 622
+  },
   "shoes_peace": {
    "h": 39,
    "w": 145,
@@ -4034,6 +4322,18 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 81,
    "y": 199
   },
+  "top_fleece_mantle": {
+   "h": 303,
+   "w": 264,
+   "x": 48,
+   "y": 198
+  },
+  "top_fleece_mantle__skin": {
+   "h": 91,
+   "w": 187,
+   "x": 85,
+   "y": 371
+  },
   "top_hoodie": {
    "h": 226,
    "w": 206,
@@ -4063,6 +4363,18 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 193,
    "x": 83,
    "y": 214
+  },
+  "top_magi_robe": {
+   "h": 422,
+   "w": 216,
+   "x": 71,
+   "y": 198
+  },
+  "top_magi_robe__skin": {
+   "h": 52,
+   "w": 195,
+   "x": 81,
+   "y": 418
   },
   "top_many_colors": {
    "h": 368,
@@ -4252,6 +4564,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 101,
    "y": 370
   },
+  "back_magi_cape": {
+   "h": 456,
+   "w": 284,
+   "x": 38,
+   "y": 208
+  },
   "back_quiver": {
    "h": 259,
    "w": 162,
@@ -4329,6 +4647,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 113,
    "x": 123,
    "y": 339
+  },
+  "belt_shepherd_pouch": {
+   "h": 86,
+   "w": 114,
+   "x": 115,
+   "y": 359
   },
   "belt_star_sash": {
    "h": 114,
@@ -4600,6 +4924,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 102,
    "y": 51
   },
+  "head_magi_crown": {
+   "h": 197,
+   "w": 137,
+   "x": 111,
+   "y": 17
+  },
   "head_olive_wreath": {
    "h": 171,
    "w": 206,
@@ -4611,6 +4941,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 106,
    "x": 126,
    "y": 36
+  },
+  "head_shepherd_hood": {
+   "h": 139,
+   "w": 136,
+   "x": 112,
+   "y": 97
   },
   "head_star_circlet": {
    "h": 46,
@@ -4726,6 +5062,18 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 64,
    "y": 325
   },
+  "held_myrrh_casket": {
+   "h": 90,
+   "w": 79,
+   "x": 67,
+   "y": 449
+  },
+  "held_newborn_lamb": {
+   "h": 136,
+   "w": 97,
+   "x": 185,
+   "y": 400
+  },
   "held_scroll": {
    "h": 62,
    "w": 81,
@@ -4755,6 +5103,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 47,
    "x": 78,
    "y": 300
+  },
+  "held_star_lantern": {
+   "h": 105,
+   "w": 89,
+   "x": 63,
+   "y": 454
   },
   "held_star_staff": {
    "h": 604,
@@ -4852,6 +5206,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 106,
    "y": 349
   },
+  "legs_magi_trousers": {
+   "h": 256,
+   "w": 111,
+   "x": 125,
+   "y": 363
+  },
   "legs_rolled_trousers": {
    "h": 213,
    "w": 107,
@@ -4923,6 +5283,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 132,
    "x": 114,
    "y": 624
+  },
+  "shoes_magi_slippers": {
+   "h": 52,
+   "w": 133,
+   "x": 114,
+   "y": 622
   },
   "shoes_peace": {
    "h": 38,
@@ -5014,6 +5380,18 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 96,
    "y": 199
   },
+  "top_fleece_mantle": {
+   "h": 303,
+   "w": 224,
+   "x": 68,
+   "y": 198
+  },
+  "top_fleece_mantle__skin": {
+   "h": 91,
+   "w": 162,
+   "x": 98,
+   "y": 371
+  },
   "top_hoodie": {
    "h": 226,
    "w": 175,
@@ -5043,6 +5421,18 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 164,
    "x": 98,
    "y": 214
+  },
+  "top_magi_robe": {
+   "h": 422,
+   "w": 183,
+   "x": 88,
+   "y": 198
+  },
+  "top_magi_robe__skin": {
+   "h": 52,
+   "w": 168,
+   "x": 95,
+   "y": 418
   },
   "top_many_colors": {
    "h": 368,
@@ -5232,6 +5622,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 70,
    "y": 370
   },
+  "back_magi_cape": {
+   "h": 456,
+   "w": 397,
+   "x": -18,
+   "y": 208
+  },
   "back_quiver": {
    "h": 259,
    "w": 182,
@@ -5309,6 +5705,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 159,
    "x": 100,
    "y": 339
+  },
+  "belt_shepherd_pouch": {
+   "h": 86,
+   "w": 159,
+   "x": 89,
+   "y": 359
   },
   "belt_star_sash": {
    "h": 114,
@@ -5580,6 +5982,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 102,
    "y": 51
   },
+  "head_magi_crown": {
+   "h": 197,
+   "w": 137,
+   "x": 111,
+   "y": 17
+  },
   "head_olive_wreath": {
    "h": 171,
    "w": 206,
@@ -5591,6 +5999,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 106,
    "x": 126,
    "y": 36
+  },
+  "head_shepherd_hood": {
+   "h": 139,
+   "w": 184,
+   "x": 88,
+   "y": 97
   },
   "head_star_circlet": {
    "h": 46,
@@ -5706,6 +6120,18 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 40,
    "y": 325
   },
+  "held_myrrh_casket": {
+   "h": 90,
+   "w": 79,
+   "x": 38,
+   "y": 449
+  },
+  "held_newborn_lamb": {
+   "h": 136,
+   "w": 97,
+   "x": 206,
+   "y": 400
+  },
   "held_scroll": {
    "h": 62,
    "w": 81,
@@ -5735,6 +6161,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 47,
    "x": 47,
    "y": 300
+  },
+  "held_star_lantern": {
+   "h": 105,
+   "w": 89,
+   "x": 34,
+   "y": 454
   },
   "held_star_staff": {
    "h": 604,
@@ -5832,6 +6264,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 76,
    "y": 349
   },
+  "legs_magi_trousers": {
+   "h": 256,
+   "w": 157,
+   "x": 102,
+   "y": 363
+  },
   "legs_rolled_trousers": {
    "h": 213,
    "w": 150,
@@ -5903,6 +6341,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 184,
    "x": 88,
    "y": 624
+  },
+  "shoes_magi_slippers": {
+   "h": 52,
+   "w": 185,
+   "x": 88,
+   "y": 622
   },
   "shoes_peace": {
    "h": 39,
@@ -5994,6 +6438,18 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 63,
    "y": 199
   },
+  "top_fleece_mantle": {
+   "h": 303,
+   "w": 314,
+   "x": 23,
+   "y": 198
+  },
+  "top_fleece_mantle__skin": {
+   "h": 91,
+   "w": 226,
+   "x": 65,
+   "y": 371
+  },
   "top_hoodie": {
    "h": 226,
    "w": 245,
@@ -6023,6 +6479,18 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 230,
    "x": 65,
    "y": 214
+  },
+  "top_magi_robe": {
+   "h": 422,
+   "w": 256,
+   "x": 51,
+   "y": 198
+  },
+  "top_magi_robe__skin": {
+   "h": 52,
+   "w": 235,
+   "x": 61,
+   "y": 418
   },
   "top_many_colors": {
    "h": 368,
@@ -6192,6 +6660,11 @@ export const LAYER_ITEMS: Record<string, LayerMeta> = {
   "starter": false,
   "tint": false
  },
+ "back_magi_cape": {
+  "slot": "back",
+  "starter": false,
+  "tint": false
+ },
  "back_quiver": {
   "slot": "back",
   "starter": false,
@@ -6256,6 +6729,11 @@ export const LAYER_ITEMS: Record<string, LayerMeta> = {
   "slot": "belt",
   "starter": false,
   "tint": true
+ },
+ "belt_shepherd_pouch": {
+  "slot": "belt",
+  "starter": false,
+  "tint": false
  },
  "belt_star_sash": {
   "slot": "belt",
@@ -6452,12 +6930,22 @@ export const LAYER_ITEMS: Record<string, LayerMeta> = {
   "starter": false,
   "tint": false
  },
+ "head_magi_crown": {
+  "slot": "head",
+  "starter": false,
+  "tint": false
+ },
  "head_olive_wreath": {
   "slot": "head",
   "starter": false,
   "tint": false
  },
  "head_pompom_beanie": {
+  "slot": "head",
+  "starter": false,
+  "tint": true
+ },
+ "head_shepherd_hood": {
   "slot": "head",
   "starter": false,
   "tint": true
@@ -6547,6 +7035,16 @@ export const LAYER_ITEMS: Record<string, LayerMeta> = {
   "starter": false,
   "tint": false
  },
+ "held_myrrh_casket": {
+  "slot": "held",
+  "starter": false,
+  "tint": false
+ },
+ "held_newborn_lamb": {
+  "slot": "held",
+  "starter": false,
+  "tint": false
+ },
  "held_scroll": {
   "slot": "held",
   "starter": false,
@@ -6563,6 +7061,11 @@ export const LAYER_ITEMS: Record<string, LayerMeta> = {
   "tint": false
  },
  "held_staff": {
+  "slot": "held",
+  "starter": false,
+  "tint": false
+ },
+ "held_star_lantern": {
   "slot": "held",
   "starter": false,
   "tint": false
@@ -6636,6 +7139,11 @@ export const LAYER_ITEMS: Record<string, LayerMeta> = {
   "slot": "legs",
   "starter": false,
   "tint": true
+ },
+ "legs_magi_trousers": {
+  "slot": "legs",
+  "starter": false,
+  "tint": false
  },
  "legs_rolled_trousers": {
   "slot": "legs",
@@ -6757,6 +7265,11 @@ export const LAYER_ITEMS: Record<string, LayerMeta> = {
   "starter": true,
   "tint": true
  },
+ "shoes_magi_slippers": {
+  "slot": "shoes",
+  "starter": false,
+  "tint": false
+ },
  "shoes_peace": {
   "slot": "shoes",
   "starter": false,
@@ -6832,6 +7345,11 @@ export const LAYER_ITEMS: Record<string, LayerMeta> = {
   "starter": false,
   "tint": true
  },
+ "top_fleece_mantle": {
+  "slot": "top",
+  "starter": false,
+  "tint": false
+ },
  "top_hoodie": {
   "slot": "top",
   "starter": true,
@@ -6856,6 +7374,11 @@ export const LAYER_ITEMS: Record<string, LayerMeta> = {
   "slot": "top",
   "starter": true,
   "tint": true
+ },
+ "top_magi_robe": {
+  "slot": "top",
+  "starter": false,
+  "tint": false
  },
  "top_many_colors": {
   "slot": "top",

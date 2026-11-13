@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useSeason } from '@/store/season'
-import { rewardLabel } from '@/data/season'
+import { rewardName } from './rewardName'
 import { useJuice } from '@/juice/useJuice'
 
 // The reveal for reaching a waystation.
@@ -109,7 +109,7 @@ export function WaystationToast() {
                 {rewards.length > 0 ? (
                   <>
                     <b style={{ fontFamily: 'var(--font-display)', fontSize: 15, display: 'block' }}>
-                      {rewards.map((r) => rewardLabel(r.id).name).join(' · ')}
+                      {rewards.map((r) => rewardName(r.id)).join(' · ')}
                     </b>
                     <span className="dim" style={{ display: 'block', fontSize: 11.5, lineHeight: 1.4 }}>
                       Yours for good. Tap to see the road →

@@ -226,6 +226,20 @@ Four things about it are load-bearing:
   silently dropped by the sanitiser, a missing coordinate draws at the origin —
   so they are a build failure, the `check-trivia` habit.
 
+**Wardrobe pieces were the one content type left in the bundle, and the
+build after 1.4.1 closes it** (`catalog.layers`, `CatalogLayer`): a layered
+piece is a box and an https URL per figure and build, so a season's hat ships
+as data. A bundled id always wins over a catalog row, and a row with no
+requirement is dropped. Pieces can be earned on a road
+(`{ kind: 'road', road, n }`), read from `season_progress` so they outlive the
+road; the rail and the reveal show them as display-only `piece_<id>` and never
+claim them, so an old build walking the same road just sees a quiet waystation
+and the piece is open when the player updates. Advent 2026 is the first such
+road (`src/data/seasons/advent-2026.json` is both the bundled floor and the
+source of the published v4 in `docs/catalog/`). And the first-launch race is
+fixed: App re-asks the season store once the catalog lands, which is why a
+first launch could say "The road is resting" while a catalog road was live.
+
 **Sets are a NAME and a completion, and deliberately nothing else.** Eleven
 items sat as a flat list of which five were already the Harvest Road's outfit,
 with nothing saying so. `ITEM_SETS` names them; completion is derived from what

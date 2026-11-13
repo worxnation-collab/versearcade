@@ -159,6 +159,9 @@ export interface PetProgress {
   studied: number
   /** Lifetime CPU races won (the keep's counter). */
   cpuWon: number
+  /** Waystation reached per seasonal road id, for the wardrobe's road pieces
+   *  (data/layered.ts). Optional: no pet asks about roads. */
+  roads?: Record<string, number>
 }
 
 export const EMPTY_PET_PROGRESS: PetProgress = {

@@ -13,7 +13,6 @@ import {
   activeRoad,
   daysLeft,
   nextPayout,
-  rewardLabel,
   type RoadDef,
 } from '@/data/season'
 import { MILES_PER_WAYSTATION, milesProgress } from '@/lib/season'
@@ -21,6 +20,8 @@ import { questDoor } from '@/data/questDoors'
 import { SeasonCosmetics } from './SeasonCosmetics'
 import { roadBackground } from './roadArt'
 import { RewardArt } from './RewardArt'
+import { rewardName } from './rewardName'
+import { PIECE_PREFIX, roadPieces } from '@/data/layered'
 
 // The road. The waystations run as a HORIZONTAL rail of reward art now — the
 // battle-pass shape — with the next unclaimed one enlarged and scrolled into
@@ -165,7 +166,12 @@ function RewardRail({ road, waystation }: { road: RoadDef; waystation: number })
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, position: 'relative', width: 'max-content' }}>
         {Array.from({ length }, (_, i) => i + 1).map((n) => {
           const w = byN.get(n)
-          const rewards = w ? [...w.a, ...w.b] : []
+          // The road's wardrobe pieces sit beside the waystation's own rewards
+          // (display only: see PIECE_PREFIX in data/layered.ts).
+          const rewards = [
+            ...(w ? [...w.a, ...w.b] : []),
+            ...roadPieces(road.id, n).map((id) => ({ id: PIECE_PREFIX + id, qty: undefined as number | undefined })),
+          ]
           const reached = waystation >= n
           const isNext = !!next && next.n === n
           const milestone = !!w?.milestone
@@ -196,7 +202,7 @@ function RewardRail({ road, waystation }: { road: RoadDef; waystation: number })
             <div
               key={n}
               ref={isNext ? nextRef : undefined}
-              aria-label={`Waystation ${n}: ${rewards.map((r) => rewardLabel(r.id).name).join(', ')}${reached ? ', yours' : ''}`}
+              aria-label={`Waystation ${n}: ${rewards.map((r) => rewardName(r.id)).join(', ')}${reached ? ', yours' : ''}`}
               style={{
                 display: 'grid',
                 justifyItems: 'center',
@@ -290,7 +296,7 @@ function RewardRail({ road, waystation }: { road: RoadDef; waystation: number })
                   WebkitBoxOrient: 'vertical',
                 }}
               >
-                {rewards.map((r) => rewardLabel(r.id).name).join(' · ')}
+                {rewards.map((r) => rewardName(r.id)).join(' · ')}
               </span>
             </div>
           )

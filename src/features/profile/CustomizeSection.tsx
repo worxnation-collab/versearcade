@@ -44,6 +44,7 @@ import {
   skinExpired,
   skinOwned,
   equippedSkinId,
+  skinById,
   isOverlaySkin,
   baseSkinId,
   passSkinEquipId,
@@ -339,6 +340,23 @@ export function CustomizeSection() {
           to take it off — so nothing is lost, and the character underneath
           comes straight back with the section the moment the skin comes off.
           (An OVERLAY skin keeps it: it layers onto your own character.) */}
+      {/* While a full skin is worn the builder is ONE card, not nothing: the
+          section vanishing entirely left a player wearing a skin with no way
+          to find the character builder at all (the owner, on a phone,
+          2026-11-13). The hero above already shows the skin, so this card
+          draws no figure — just the door back to your own character. */}
+      {skinCovered && (
+        <div className="card" style={{ marginBottom: 14, display: 'grid', gap: 10, textAlign: 'center' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 800 }}>Your character</div>
+          <p className="dim" style={{ fontSize: 13, lineHeight: 1.5, margin: 0 }}>
+            You’re wearing <b>{skinById(equippedSkin!)?.name ?? 'a full look'}</b>. Your own character —
+            figure, skin tone, hair and clothes — is underneath, exactly as you left it.
+          </p>
+          <Button variant="gold" full onClick={() => { juice.select(); setAvatarCharacter({ ...spec, skinId: null, regalia: null }); flashSaved() }}>
+            Build my character
+          </Button>
+        </div>
+      )}
       {!skinCovered && (
       <Section
         title="Your Character"

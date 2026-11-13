@@ -71,7 +71,7 @@ export function LeaderLookPanel({
     const r = await saveLeaderLook(churchId, id)
     if (!r.ok) {
       setLook(before)
-      setMsg(r.reason === 'not_verified' ? 'Leader looks come with the Church Leader plan.' : "That didn't save — try again in a moment.")
+      setMsg(r.reason === 'not_verified' ? 'Leader looks come with the Verified Church plan.' : "That didn't save — try again in a moment.")
       return
     }
     // Members see this look now (0146) — the next church screen re-reads it.

@@ -784,9 +784,9 @@ function TodayPath({
         <DailyRow
           accent="rgba(154,124,69,0.30)"
           icon="⛪"
-          eyebrow={upcoming('church') ? `Then · from ${church.churchName}` : `From ${church.churchName}`}
+          eyebrow={upcoming('church') ? 'Then · your church' : church.churchName}
           title={church.reference}
-          line={churchDone ? churchLine : upcoming('church') ? 'Your church’s verse, after today’s drop' : churchLine}
+          line={churchDone ? churchLine : upcoming('church') ? 'Your church’s verse, next' : churchLine}
           done={churchDone}
           quiet={upcoming('church')}
           result={church.played ? `${church.played.correct}/${church.played.total}` : undefined}

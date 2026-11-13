@@ -59,8 +59,9 @@ export function SeriesTrail({ series, compact = false }: { series: ChurchSeries;
       </div>
       {seen.length > 0 && (
         <div className="faint" style={{ fontSize: 11.5, lineHeight: 1.45, overflowWrap: 'anywhere' }}>
-          So far:{' '}
-          {seen.map((d) => d.reference).join(' · ')}
+          {/* the last three, not a run-on list of a whole series */}
+          {seen.length > 3 ? 'Lately: … ' : 'So far: '}
+          {seen.slice(-3).map((d) => d.reference).join(' · ')}
           {pos.next ? ` · next ${weekday(pos.next.date)}` : ''}
         </div>
       )}

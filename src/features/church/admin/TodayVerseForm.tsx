@@ -696,7 +696,7 @@ export function TodayVerseForm({
               />
             </div>
           ))}
-          <input value={q.teach} onChange={(e) => setQ(i, { teach: e.target.value })} placeholder="Shown after answering — what a wrong answer should learn" maxLength={400} aria-label={`Question ${i + 1} explanation`} />
+          <input value={q.teach} onChange={(e) => setQ(i, { teach: e.target.value })} placeholder="What a wrong answer should learn" maxLength={400} aria-label={`Question ${i + 1} explanation`} />
         </div>
       ))}
       <p className="faint" style={{ margin: '-4px 0 0', fontSize: 11.5, lineHeight: 1.45 }}>

@@ -139,6 +139,16 @@ const DRAFT_REASONS: Record<string, string> = {
   unavailable: 'Drafting isn’t available just now — check your connection and try again.',
 }
 
+// One example per question card, so five empty cards don't all read as the
+// same pre-filled question (they did: "What does Jesus call himself here?" x5).
+const QUESTION_HINTS = [
+  'Who is speaking in this verse?',
+  'Who is it said to?',
+  'Fill the blank: "I am the ___; you are the branches."',
+  'What happens just before this?',
+  'What is this verse promising?',
+]
+
 export function TodayVerseForm({
   churchId,
   churchName,
@@ -676,7 +686,7 @@ export function TodayVerseForm({
               </button>
             </div>
           )}
-          <input value={q.prompt} onChange={(e) => setQ(i, { prompt: e.target.value })} placeholder="What does Jesus call himself here?" maxLength={300} aria-label={`Question ${i + 1}`} />
+          <input value={q.prompt} onChange={(e) => setQ(i, { prompt: e.target.value })} placeholder={QUESTION_HINTS[i % QUESTION_HINTS.length]} maxLength={300} aria-label={`Question ${i + 1}`} />
           {q.options.map((o, k) => (
             <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <input

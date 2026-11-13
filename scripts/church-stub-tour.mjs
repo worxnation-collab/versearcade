@@ -48,7 +48,16 @@ const R={
  church_admin_settings:{ok:true,name:'Verse Arcade Demo Church',verified:true,giving_url:null,announcement:ann},
  church_self_claim_status:{ok:true,status:'you_lead',free_ok:false,members:4,my_pending:null},
  church_rivalry:null,
+ church_verse_for:{ok:true,verse:day('2026-11-13','Psalm 91:1','Psalms for the Week','published')},
 }
+// Populated states (the demo church is empty in these) — so the tour checks
+// what a church with people in it sees, not only the empty cards.
+const ppl=(u,c)=>({username:u,avatar_emoji:'📖',avatar_character:c??null})
+R.church_join_inquiry_list={ok:true,inquiries:[{...ppl('grace_t'),note:'We just moved to Springfield. What time is the family service, and is there anything for kids?',at:'2026-11-12T18:20:00Z',joined_here:false,joined_elsewhere:false,reply:null,replied_at:null}]}
+R.church_groups_list={ok:true,groups:[{id:'g1',name:'Tuesday Young Adults',description:'Meets at the Hendersons\' after work',members:[{...ppl('applereview',avatar),role:'leader',is_me:true},{...ppl('qa_member1'),role:'member'},{...ppl('grace_t'),role:'member'}]},{id:'g2',name:'Men\'s breakfast',description:null,members:[{...ppl('qa_leader'),role:'leader'}]}]}
+R.church_prayer_list={ok:true,notes:[{id:'p1',category:'health',line:'My mum has surgery on Thursday morning.',created_at:'2026-11-12T09:00:00Z',state:'open',answered_at:null,...ppl('qa_member1'),prayed:false,followed_up:false},{id:'p2',category:'work',line:'Interview on Friday — pray for peace.',created_at:'2026-11-08T09:00:00Z',state:'answered',answered_at:'2026-11-11T09:00:00Z',...ppl('qa_member2'),prayed:true,followed_up:false}]}
+R.church_leader_insights.roster.push(...['jonah_r','ruthie','mk_ellis','sam_okafor','dee'].map((u,i)=>({leader:false,streak:i,drop_7d:i,username:u,church_7d:i%3,joined_at:'2026-11-0'+(i+1)+'T00:00:00Z',church_avg:150+i*10,avatar_emoji:'📖',last_played_on:i>1?'2026-11-1'+i:'2026-10-2'+i,avatar_character:null})))
+
 const routes=process.argv.slice(2)
 mkdirSync(O,{recursive:true})
 const b=await chromium.launch({executablePath:process.env.PW})
@@ -62,6 +71,8 @@ await ctx.route('https://stubproj.supabase.co/**',async(route)=>{const u=new URL
  else if(u.pathname.startsWith('/rest/v1/'))body='[]'
  await route.fulfill({status:200,contentType:'application/json',body})})
 const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message))
-for(const [i,r] of routes.entries()){await p.goto(`http://127.0.0.1:${PORT}${r}`);await p.waitForTimeout(3000);await p.screenshot({path:`${O}/s${i}_${r.replace(/\W+/g,'_')}.png`,fullPage:true});console.log(r,await p.evaluate(()=>document.documentElement.scrollHeight))}
+for(const [i,r] of routes.entries()){await p.goto(`http://127.0.0.1:${PORT}${r}`);await p.waitForTimeout(3000);await p.screenshot({path:`${O}/s${i}_${r.replace(/\W+/g,'_')}.png`,fullPage:true});console.log(r,await p.evaluate(()=>document.documentElement.scrollHeight))
+ // On the Church Office, every tab too ("Home" is the first shot)
+ if(r.endsWith('/admin'))for(const t of ['Plan','People','Your page']){const b=p.getByText(t,{exact:true}).first();if(await b.count()){await b.click();await p.waitForTimeout(1800);await p.screenshot({path:`${O}/s${i}_tab_${t.replace(/\W+/g,'_')}.png`,fullPage:true});console.log(' tab',t,await p.evaluate(()=>document.documentElement.scrollHeight))}else console.log(' no tab',t)}}
 console.log('missing rpcs',[...miss].join(','));console.log('errors',errs)
 await b.close()

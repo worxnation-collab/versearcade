@@ -215,8 +215,9 @@ export default function ChurchesScreen() {
           <li>{signedIn ? 'You’re signed in — that’s step one done.' : 'Make a free account, the same one anybody plays with — or sign in.'}</li>
           <li>Find your church and open its page.</li>
           <li>
-            Tap <b>Add info</b> (or <b>Suggest an edit</b>) and say you&rsquo;re leadership. A person checks with your church — a
-            call, or an email from its own address — and then the page is yours to edit.
+            At the bottom, tap <b>Lead this church? Claim its page</b>. It&rsquo;s free once three people play there. If
+            somebody already leads it, tap <b>Add info</b> and say you&rsquo;re leadership instead — a person checks with
+            your church, by a call or an email from its own address.
           </li>
         </ol>
         <p className="faint" style={{ margin: '10px 0 0', fontSize: 12.5, lineHeight: 1.45 }}>

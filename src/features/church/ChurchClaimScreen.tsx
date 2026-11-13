@@ -36,7 +36,7 @@ import {
 // link once it has been used.
 //
 // With NO code it is the self-serve claim instead — `SelfClaim` below: free
-// once the page has three members (0137), or paid on the Church Leader plan
+// once the page has three members (0137), or paid on the Verified Church plan
 // (0134).
 export default function ChurchClaimScreen() {
   const { id = '' } = useParams()
@@ -391,7 +391,7 @@ function SelfClaim({ id }: { id: string }) {
         )}
         {web && (
           <Button variant={o.freeOk ? 'secondary' : 'gold'} full onClick={() => { juice.select?.(); setPath('paid') }}>
-            Choose the Church Leader plan
+            Choose the Verified Church plan
           </Button>
         )}
       </div>
@@ -401,7 +401,7 @@ function SelfClaim({ id }: { id: string }) {
     body = (
       <div style={{ display: 'grid', gap: 12 }}>
         <button className="pill" style={{ justifySelf: 'start', fontSize: 12 }} disabled={busy} onClick={() => { setPath(null); setErr(null) }}>
-          ← {path === 'free' ? 'Free claim' : 'Church Leader plan'}
+          ← {path === 'free' ? 'Free claim' : 'Verified Church plan'}
         </button>
         {path === 'free' && (
           <div role="radiogroup" aria-label="How to verify" style={{ display: 'grid', gap: 8 }}>
@@ -519,7 +519,7 @@ function ClaimExplainer({ web, members }: { web: boolean; members: number }) {
       </div>
       {web && (
         <div className="card" style={{ padding: '12px 14px' }}>
-          <b style={head}>Church Leader plan</b>
+          <b style={head}>Verified Church plan</b>
           <div className="faint" style={{ fontSize: 11.5 }}>Paid · Founding Churches free through Easter 2027</div>
           <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
             <li style={li}>Everything in the free claim, and a verified badge.</li>

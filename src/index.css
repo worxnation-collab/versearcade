@@ -443,6 +443,23 @@ input, textarea {
   padding: 14px 16px; width: 100%;
   outline: none;
 }
+/* Dropdowns wear the input's skin. They were the browser's default (a small
+   white box) in all 31 places the app uses one — the Church Office's "send a
+   note" chooser read as broken on a phone (2026-11-13). */
+select {
+  font-family: inherit; font-size: 16px;
+  color: var(--ink);
+  background: rgba(0,0,0,0.25) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23c9bfae' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 14px center;
+  border: 1.5px solid var(--stroke);
+  border-radius: var(--r-md);
+  padding: 12px 40px 12px 14px;
+  min-height: 46px;
+  -webkit-appearance: none; appearance: none;
+  outline: none;
+  max-width: 100%;
+}
+select:focus { border-color: var(--grape); }
+select option { color: #1d1712; background: #f4efe6; }
 input:focus, textarea:focus { border-color: var(--grape); }
 input::placeholder { color: var(--ink-faint); }
 

@@ -48,6 +48,12 @@ this list whenever art, a wardrobe piece, a palette value or a feature ships:
   head (it must not be clipped)? Does the picker tile read as the item (back
   pieces need `back-icons.py`)? Does an overlay or old skin ride along into a
   new look with no way to take it off?
+- **`python3 scripts/avatar/wardrobe-audit.py --sheet <dir>`** (in CI) renders
+  EVERY piece worn on a dark body, all builds, and fails on loose fragments
+  or a light-skin leak that is new or worse than the reviewed baseline
+  (`wardrobe-audit.baseline.json`; refresh it with `--write-baseline` only
+  after LOOKING at `<dir>/worn_flagged.png`). Three rounds of "it still
+  renders wrong" (2026-11-12/13) were each a leak or a crumb this catches.
 - **Drive it in Chromium at 390px, on a dark skin tone, both figures**, and
   screenshot animations MID-transition, not only at rest: two captions
   overlapping during a slide change looked fine at rest.

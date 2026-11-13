@@ -60,6 +60,16 @@ jobs:
       - name: Visual audit
         run: npm run visual-audit
 
+      # The wardrobe WORN (scripts/avatar/wardrobe-audit.py): every piece on
+      # both figures and all builds over a dark body. Fails on loose fragments
+      # or on light-skin leaks that are new or worse than the reviewed
+      # baseline; the flagged pieces are drawn zoomed into the artifact.
+      - name: Wardrobe audit
+        if: always()
+        run: |
+          pip install --quiet numpy pillow scipy
+          python3 scripts/avatar/wardrobe-audit.py --sheet art/.visual-audit/wardrobe
+
       - name: Upload visual-audit screenshots
         if: always()
         uses: actions/upload-artifact@v4

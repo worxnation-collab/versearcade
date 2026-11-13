@@ -21,7 +21,7 @@ import {
   type WeekPassage,
 } from '@/store/churchAdmin'
 import { AllowanceLine, ENGINE_REASONS, outcomeText, recoverLanded } from './weekRun'
-import { DiscussionToggle } from './WeekDraftPanel'
+import { DiscussionToggle, dateRuns } from './WeekDraftPanel'
 import { TranscriptMeter, transcriptNote } from './transcript'
 import { MemoInput, placeTranscript } from './memo'
 
@@ -535,10 +535,10 @@ function FillLine({ plan, error }: { plan: FillPlan | null; error: boolean }) {
   const redone = plan.drafts.filter((d) => plan.dates.includes(d))
   return (
     <div style={{ fontSize: 12, lineHeight: 1.5 }}>
-      <div><b>Drafts go on</b> <span className="dim">{plan.dates.map(pretty).join(', ')}</span></div>
-      {plan.live.length > 0 && <div className="dim">Left alone (approved): {plan.live.map(pretty).join(', ')}</div>}
-      {keptDrafts.length > 0 && <div className="dim">Kept (your waiting drafts): {keptDrafts.map(pretty).join(', ')}</div>}
-      {redone.length > 0 && <div className="dim">Redone (older drafts replaced): {redone.map(pretty).join(', ')}</div>}
+      <div><b>Drafts go on</b> <span className="dim">{dateRuns(plan.dates, pretty)}</span></div>
+      {plan.live.length > 0 && <div className="dim">Left alone (approved): {dateRuns(plan.live, pretty)}</div>}
+      {keptDrafts.length > 0 && <div className="dim">Kept (your waiting drafts): {dateRuns(keptDrafts, pretty)}</div>}
+      {redone.length > 0 && <div className="dim">Redone (older drafts replaced): {dateRuns(redone, pretty)}</div>}
     </div>
   )
 }

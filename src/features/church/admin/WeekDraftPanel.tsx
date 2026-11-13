@@ -370,13 +370,13 @@ function PlanLine({ plan, error, days }: { plan: Plan | null; error: boolean; da
   return (
     <div style={{ fontSize: 12, lineHeight: 1.5 }}>
       <div>
-        <b>Drafts go on</b> <span className="dim">{plan.dates.map(pretty).join(', ')}</span>
+        <b>Drafts go on</b> <span className="dim">{dateRuns(plan.dates)}</span>
       </div>
       {plan.skipped.length > 0 && (
-        <div className="dim">Left alone (already live): {plan.skipped.map(pretty).join(', ')}</div>
+        <div className="dim">Left alone (already live): {dateRuns(plan.skipped)}</div>
       )}
       {plan.replaces.length > 0 && (
-        <div className="dim">Replaces an older draft on {plan.replaces.map(pretty).join(', ')}</div>
+        <div className="dim">Replaces an older draft on {dateRuns(plan.replaces)}</div>
       )}
     </div>
   )
@@ -422,15 +422,31 @@ export function DraftReview({
   const [busy, setBusy] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
 
+  // The calendar shows three weeks, and a week drafted past its edge used to be
+  // invisible here: five days drafted, "Approve all 3" (live, 2026-11-13). So
+  // the review reads the planner's whole six-week horizon itself, refreshed
+  // whenever the calendar reloads, and the calendar's copy wins for its days.
+  const [ahead, setAhead] = useState<WeekDay[] | null>(null)
+  useEffect(() => {
+    let alive = true
+    const from = week?.[0]?.date
+    if (!from) return
+    void fetchDays(churchId, from, 42, backend).then((r) => { if (alive && r.ok) setAhead(r.data) })
+    return () => { alive = false }
+  }, [churchId, backend, week])
   const groups = useMemo(() => {
     const m = new Map<string, WeekDay[]>()
-    for (const w of week ?? []) {
+    const byDate = new Map<string, WeekDay>()
+    for (const w of ahead ?? []) byDate.set(w.date, w)
+    for (const w of week ?? []) byDate.set(w.date, w)
+    const all = [...byDate.values()].sort((a, b) => (a.date < b.date ? -1 : 1))
+    for (const w of all) {
       if (w.verse?.status !== 'draft') continue
       const k = w.verse.series ?? ''
       m.set(k, [...(m.get(k) ?? []), w])
     }
     return [...m.entries()]
-  }, [week])
+  }, [week, ahead])
 
   if (!backend.approveMany) return null
   if (!groups.length) return note ? <p style={{ margin: 0, fontSize: 12.5, color: 'var(--mint)' }}>{note}</p> : null
@@ -587,6 +603,23 @@ export function DraftReview({
       {err && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--coral)' }}>{err}</p>}
     </div>
   )
+}
+
+/**
+ * A list of dates as runs: "Sat, Nov 14 – Mon, Nov 30" rather than seventeen
+ * dates in a row (found on the live Office, 2026-11-13). Consecutive days
+ * collapse; a lone day stays itself.
+ */
+export function dateRuns(dates: string[], fmt: (iso: string) => string = pretty): string {
+  const ds = [...new Set(dates)].sort()
+  const out: string[] = []
+  for (let i = 0; i < ds.length; i++) {
+    let j = i
+    while (j + 1 < ds.length && addDays(ds[j], 1) === ds[j + 1]) j++
+    out.push(j - i >= 2 ? `${fmt(ds[i])} – ${fmt(ds[j])}` : ds.slice(i, j + 1).map(fmt).join(', '))
+    i = j
+  }
+  return out.join(', ')
 }
 
 function pretty(iso: string): string {

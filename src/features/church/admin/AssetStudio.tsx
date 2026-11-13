@@ -156,6 +156,8 @@ export function AssetStudio({
                   title={ok ? undefined : `Holds up to about ${bodyCapacity(t)} characters`}
                   style={{
                     padding: 4, borderRadius: 12, cursor: ok ? 'pointer' : 'default', minWidth: 0, display: 'grid', gap: 4,
+                    // a wide look (Cosmos) in a row of tall ones: the card centred, the name at the foot
+                    gridTemplateRows: '1fr auto', alignItems: 'center',
                     background: template === t.id ? 'var(--select)' : 'transparent',
                     boxShadow: template === t.id ? '0 0 0 2px var(--ink-dim)' : 'inset 0 0 0 1px var(--edge)',
                     color: 'inherit', font: 'inherit',

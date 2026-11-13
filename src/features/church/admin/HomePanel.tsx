@@ -16,6 +16,7 @@ import { DigestToggle } from './DigestToggle'
 import { LeaderTop } from './LeaderTop'
 import { MoreTools } from './MoreTools'
 import { TellAPastor } from './TellAPastor'
+import { SendNoteCard } from './LeaderTop'
 
 // Home — "This week": what needs a leader, before anything else (2026-10-26).
 //
@@ -169,6 +170,7 @@ export function HomePanel({
   }
 
   const loading = verified && !days && !failed
+  const wide = useWide()
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10, minWidth: 0 }}>
@@ -217,9 +219,22 @@ export function HomePanel({
         </button>
       ))}
 
-      {verified && <TellAPastor churchName={settings.name} />}
-
-      {verified && (
+      {/* Everything past the to-do, folded on a phone (2026-11-13): Home opened
+          on six cards before the totals. On a wide screen the totals keep their
+          own column, where they cost no scrolling. */}
+      {verified && !wide && (
+        <MoreTools names={['At a glance', 'Send a note', 'Tell another pastor', 'Tuesday email digest', 'How your series are landing']}>
+          <h2 style={{ margin: '4px 0 0', fontSize: 17, fontFamily: 'var(--font-display)' }}>At a glance</h2>
+          {glance}
+          <SendNoteCard churchId={churchId} insights={insights} />
+          <TellAPastor churchName={settings.name} />
+          <DigestToggle churchId={churchId} />
+          <SeriesLandingPanel churchId={churchId} churchName={settings.name} />
+        </MoreTools>
+      )}
+      {verified && wide && <SendNoteCard churchId={churchId} insights={insights} />}
+      {verified && wide && <TellAPastor churchName={settings.name} />}
+      {verified && wide && (
         <MoreTools names={['Tuesday email digest', 'How your series are landing']}>
           <DigestToggle churchId={churchId} />
           <SeriesLandingPanel churchId={churchId} churchName={settings.name} />
@@ -227,10 +242,12 @@ export function HomePanel({
       )}
       </div>
 
-      <div className="home-split-side">
-      <h2 style={{ margin: '10px 0 0', fontSize: 17, fontFamily: 'var(--font-display)' }}>At a glance</h2>
-      {glance}
-      </div>
+      {(!verified || wide) && (
+        <div className="home-split-side">
+        <h2 style={{ margin: '10px 0 0', fontSize: 17, fontFamily: 'var(--font-display)' }}>At a glance</h2>
+        {glance}
+        </div>
+      )}
       </div>
       {bigger && <BiggerScreen churchId={churchId} />}
     </div>
@@ -261,4 +278,18 @@ function BiggerScreen({ churchId }: { churchId: string }) {
       Plan on a bigger screen →
     </button>
   )
+}
+
+/** The dashboard's two-column breakpoint (.admin-wide in index.css). */
+function useWide(): boolean {
+  const q = '(min-width: 900px)'
+  const [wide, setWide] = useState(() => typeof window !== 'undefined' && window.matchMedia?.(q).matches === true)
+  useEffect(() => {
+    const m = window.matchMedia?.(q)
+    if (!m) return
+    const on = () => setWide(m.matches)
+    m.addEventListener?.('change', on)
+    return () => m.removeEventListener?.('change', on)
+  }, [])
+  return wide
 }

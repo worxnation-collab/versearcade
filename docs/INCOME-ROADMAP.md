@@ -110,6 +110,16 @@ look and never an edge (YouVersion's model at our scale: ~$50–300/mo).
 **Not doing**: ads, consumer paywalls, sponsored placements.
 
 ## Done
+- 2026-11-13 (08:52 UTC) — research pass: unchanged (192 accounts, 19 active
+  this week, 0 from any tracked funnel). Two leads moved today:
+  **Lead 2 outreach:** neither warm church has a public email. Real Life On
+  The Palouse is a campus of Real Life Ministries (site liferotp.com; the
+  ministry's only public inbox is pastoral care, not for this); Connect
+  Church, Opelika (2900 Waverly Pkwy) points people to Facebook. A draft
+  email is ready; it waits on a real address from the owner and a Resend key
+  this side. **Lead 1:** the Studio steps were handed to Claude in Chrome as
+  a prompt; the long-form explainer video still has to be recorded by the
+  owner. Check `yt-related` / `yt-banner` a week after it is live.
 - 2026-11-13 (00:52 and 04:52 UTC) — research passes: unchanged. 192 accounts, 0 new in
   a day, 18 active this week (from 20), 0 `pastor-ref`, 0 claims, 0 join
   inquiries, 0 plan-page taps in 14 days. Nothing to ship.

@@ -53,9 +53,6 @@ export function LeaderTop({ churchId, today, days, insights, onGo, ap = null, se
   onJob?: () => void
 }) {
   const juice = useJuice()
-  const [to, setTo] = useState('')
-  const [writing, setWriting] = useState<InsightMember | null>(null)
-  const [sent, setSent] = useState<string | null>(null)
 
   const week = days?.slice(0, 7) ?? null
   const planned = week ? week.filter((w) => w.verse && w.verse.status !== 'draft').length : 0
@@ -137,6 +134,26 @@ export function LeaderTop({ churchId, today, days, insights, onGo, ap = null, se
         </button>
       </div>
 
+    </div>
+  )
+}
+
+/**
+ * "Send a note": write to any member, today's church verse attached. Home
+ * opened on three cards and this was the third (2026-10-30); since 2026-11-13
+ * Home leads with the week, who's playing and the to-do, and this card waits
+ * one tap down with the totals, because a check-in for a QUIET member is
+ * already a to-do row and every member's row on People carries "Note".
+ */
+export function SendNoteCard({ churchId, insights }: { churchId: string; insights: LeaderInsights | null }) {
+  const [to, setTo] = useState('')
+  const [writing, setWriting] = useState<InsightMember | null>(null)
+  const [sent, setSent] = useState<string | null>(null)
+  const members = insights?.roster.filter((m) => !m.leader) ?? []
+  const card = { padding: '12px 14px', display: 'grid', gap: 8, minWidth: 0 } as const
+  const head = { margin: 0, fontSize: 15, fontFamily: 'var(--font-display)' } as const
+  return (
+    <>
       <div className="card" style={card} data-top="note">
         <h2 style={head}>✉️ Send a note</h2>
         {!insights ? <div className="skeleton" style={{ height: 36, borderRadius: 8 }} /> : members.length === 0 ? (
@@ -172,7 +189,7 @@ export function LeaderTop({ churchId, today, days, insights, onGo, ap = null, se
           onSent={(u) => { setSent(u); setTo(''); setWriting(null) }}
         />
       )}
-    </div>
+    </>
   )
 }
 

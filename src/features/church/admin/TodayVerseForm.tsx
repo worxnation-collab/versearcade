@@ -6,6 +6,7 @@ import { parseReference } from '@/lib/bibleProgress'
 import { verseFromReference } from '@/data/bible/questions'
 import { TranscriptMeter, transcriptNote } from './transcript'
 import { MemoInput, placeTranscript } from './memo'
+import { autoQuestions } from '@/data/bible/autoQuestions'
 import { cleanDiscussion, DISCUSSION_LINE_MAX, cleanLine, cleanQuestions, fetchDays, flaggedCount, GUIDANCE_MAX, NOTE_MAX, SERIES_MAX, serverVerseBackend, useDraftAllowance, type DayVerse, type VerseBackend, type VerseStatus, type WeekDay } from '@/store/churchAdmin'
 import type { Question } from '@/types'
 import { SeriesCopyPanel } from './SeriesCopyPanel'
@@ -182,6 +183,9 @@ export function TodayVerseForm({
   const [reference, setReference] = useState('')
   const [text, setText] = useState('')
   const [qs, setQs] = useState<Draft[]>(() => Array.from({ length: 5 }, blank))
+  // Five blank cards fold into one line until the leader asks for them: a
+  // verse saved with none gets five written from its words (autoQuestions).
+  const [ownCards, setOwnCards] = useState(false)
   const [loading, setLoading] = useState(true)
   const [existing, setExisting] = useState(false)
   // The day as it is SAVED (not the edits in the fields) — what a card is made from.
@@ -256,6 +260,7 @@ export function TodayVerseForm({
       setReference(v?.reference ?? '')
       setText(v?.text ?? '')
       setQs(v ? v.questions.map(toDraft) : Array.from({ length: 5 }, blank))
+      setOwnCards(false)
       // An empty day right after a day in a series most likely continues it,
       // so the name is offered — visible in the field, and one tap to clear.
       const before = weekRef.current?.find((w) => w.date === addDays(date, -1))?.verse
@@ -342,13 +347,27 @@ export function TodayVerseForm({
   const setOpt = (i: number, k: number, v: string) =>
     setQs((all) => all.map((q, j) => (j === i ? unflag({ ...q, options: q.options.map((o, m) => (m === k ? v : o)) }) : q)))
   const flagged = qs.filter((q) => q.check).length
+  const allBlank = qs.every((q) => !q.prompt.trim() && !q.teach.trim() && q.options.every((o) => !o.trim()))
+  const folded = allBlank && !ownCards
+  const writeNow = () => {
+    const auto = autoQuestions(reference, text)
+    setOwnCards(true)
+    if (auto) { setQs(auto.map(toDraft)); setMsg(null) }
+    else setMsg({ ok: false, text: parseReference(reference) && text.trim() ? 'This verse is too short for us to write five questions from — write them below.' : 'Type the reference and the verse first.' })
+  }
 
   // The verse as the form holds it, or null with the reason on screen.
   const build = (): DayVerse | null => {
     setMsg(null)
     if (!parseReference(reference)) { setMsg({ ok: false, text: REASONS.bad_reference }); return null }
     if (!text.trim()) { setMsg({ ok: false, text: REASONS.bad_text }); return null }
-    const built = qs.map(fromDraft)
+    let built = qs.map(fromDraft)
+    if (allBlank) {
+      const auto = autoQuestions(reference, text)
+      if (!auto) { setOwnCards(true); setMsg({ ok: false, text: 'This verse is too short for us to write five questions from — write them below.' }); return null }
+      built = auto
+      setQs(auto.map(toDraft))
+    }
     const bad = built.findIndex((q) => !q || !cleanQuestions([q, q, q, q, q]))
     if (bad >= 0) { setMsg({ ok: false, text: `Question ${bad + 1} isn’t finished. ${REASONS.bad_questions}` }); return null }
     return {
@@ -666,7 +685,19 @@ export function TodayVerseForm({
           <span className="dim">A second read of the passage didn’t agree with the marked answer. Edit it, or tap “Looks right” and save. You can still save or approve either way; approving takes the ⚠ off.</span>
         </p>
       )}
-      {qs.map((q, i) => (
+      {folded && (
+        <div className="card" data-auto-questions style={{ padding: '12px 14px', display: 'grid', gap: 8, minWidth: 0 }}>
+          <b style={{ fontSize: 14 }}>Questions</b>
+          <span className="dim" style={{ fontSize: 13, lineHeight: 1.5 }}>
+            Leave these to us: saving writes five from the verse — which book, its reference and three fill-in-the-blanks — and every one teaches on a miss. You can edit them any time.
+          </span>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button className="pill" onClick={writeNow} style={{ fontWeight: 800, fontSize: 12.5 }}>✨ Write them now so I can edit</button>
+            <button className="pill" onClick={() => setOwnCards(true)} style={{ fontSize: 12.5 }}>I’ll write my own</button>
+          </div>
+        </div>
+      )}
+      {!folded && qs.map((q, i) => (
         <div
           key={i}
           className="card"
@@ -709,9 +740,9 @@ export function TodayVerseForm({
           <input value={q.teach} onChange={(e) => setQ(i, { teach: e.target.value })} placeholder="What a wrong answer should learn" maxLength={400} aria-label={`Question ${i + 1} explanation`} />
         </div>
       ))}
-      <p className="faint" style={{ margin: '-4px 0 0', fontSize: 11.5, lineHeight: 1.45 }}>
+      {!folded && <p className="faint" style={{ margin: '-4px 0 0', fontSize: 11.5, lineHeight: 1.45 }}>
         Mark the right answer with the circle. The last line shows after every answer, right or wrong — a miss should still teach something.
-      </p>
+      </p>}
 
       {msg && <p style={{ margin: 0, fontSize: 13, color: msg.ok ? 'var(--mint)' : 'var(--coral)' }}>{msg.text}</p>}
       {saved?.series && backend.setThisWeek && (

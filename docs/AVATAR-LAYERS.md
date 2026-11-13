@@ -248,3 +248,28 @@ more fixes landed. Run them, in this order, after any re-extraction, then
 
 The male kilt also lost its knee socks, which the tint turned into pale
 shins (the female kilt has none).
+
+## The wardrobe audit (2026-11-13)
+
+`scripts/avatar/wardrobe-audit.py` is the check that should have existed
+before the three passes above. It composites every piece WORN, as
+LayeredFigure draws it, on the ebony body, both figures, all builds, with
+tinted pieces dyed blue, and reports:
+
+- **CRUMB**: loose fragments under 2% of the piece (dye spots on the shins,
+  scraps on the fingers, shadow puddles by the shoes). `crumbs.py` removes
+  them, by the same rule, across all six folders. Zero today.
+- **LEAK**: peach (the light base's skin) a piece puts on the body. A
+  tinted piece is blue here, so any peach from it is a leak; an untinted
+  one is judged only on the face. Colour cannot tell a straw brim or a
+  crown's gems from skin, so those were looked at and accepted into
+  `wardrobe-audit.baseline.json`; CI fails only on NEW or WORSE.
+
+`--sheet <dir>` writes `worn_flagged.png`: each flagged piece zoomed, beside
+the same crop with the flagged pixels painted (red leak, magenta crumb).
+Look at it before running `--write-baseline`.
+
+Two more fixes from its first run: the goggles' nose bridge and the Helmet of
+Salvation's face rim were light base skin (cleared in a box below the gold
+band / between the lenses), and the female dragon helm's eye holes were
+ringed with it.

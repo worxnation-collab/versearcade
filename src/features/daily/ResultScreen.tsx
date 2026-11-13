@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { NextStepCard } from './NextStepCard'
+import { useChurchVerse } from '@/store/churchVerse'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChapterReader } from './ChapterReader'
@@ -30,6 +31,7 @@ import { ChurchArt } from '@/features/church/ChurchArt'
 
 export default function ResultScreen() {
   const navigate = useNavigate()
+  const churchWaiting = useChurchVerse((s) => !!s.today && !s.today.played)
   const juice = useJuice()
   const { today, todayDate, lastResult } = useGame()
   // What's next on today's path (church verse, then trivia) is NextStepCard's.
@@ -292,6 +294,13 @@ export default function ResultScreen() {
                 battles, Study and your own Bible — and keeps this streak safe.
               </p>
             </>
+          ) : churchWaiting ? (
+            // A member whose church set a verse for today: "that's today's drop,
+            // go to Study" was pulling them away from the plan their church set.
+            // The next-step card above already points at it; this says so.
+            <p className="faint" style={{ fontSize: 12, margin: 0, lineHeight: 1.5 }}>
+              Your church’s verse is next — it’s on your Play tab too. Study and battles are there whenever you want more.
+            </p>
           ) : (
             <>
               <Button variant="secondary" full onClick={() => navigate('/battle/new')}>⚔️ Challenge a buddy</Button>

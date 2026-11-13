@@ -224,6 +224,11 @@ export default function HomeScreen() {
   const myChurch = useChurch((s) => s.church)
   const myGiven = useChurch((s) => s.myGiven)
   const churchAvailable = useChurch((s) => s.available)
+  const churchVerseLoaded = useChurchVerse((s) => s.loaded)
+  const churchVerseToday = useChurchVerse((s) => s.today)
+  // the church's step only — trivia is offered by every result screen, and a
+  // new player who skips it should still get the tour
+  const pathDone = playedToday && (mode !== 'online' || (churchVerseLoaded && (!churchVerseToday || !!churchVerseToday.played)))
   const quiet = sheet === null && !tutorialOpen && !wantsChest && !(recap && !recapSeen)
   // What the church card can do right now, for an account (a church needs one;
   // a guest's card simply opens /church and meets the wall there).
@@ -243,13 +248,16 @@ export default function HomeScreen() {
   const [churchSheetPhase, setChurchSheetPhase] = useState<'find' | 'give'>('find')
   useEffect(() => {
     if (!quiet) return
-    if (!firstDropTourSeen && playedToday && profile.totalPlays <= 1) {
+    // The tour waits for the whole of today's path: popped straight after the
+    // drop it covered a member's church-verse step and pointed them away from
+    // the plan their church set (found playing as a member, 2026-11-13).
+    if (!firstDropTourSeen && pathDone && profile.totalPlays <= 1) {
       setSheet('tour')
     } else if (churchFollowUp) {
       setChurchSheetPhase('give')
       setSheet('church')
     }
-  }, [quiet, firstDropTourSeen, playedToday, profile.totalPlays, churchPhase, churchFollowUp])
+  }, [quiet, firstDropTourSeen, pathDone, profile.totalPlays, churchPhase, churchFollowUp])
   // Sent to find a church and came back without one (or already giving): the
   // moment has had its one go.
   useEffect(() => {
@@ -464,6 +472,7 @@ export default function HomeScreen() {
         >
           <FirstDropTour
             churchPhase={churchPhase}
+            churchName={myChurch?.name ?? null}
             onFind={() => { setSettings({ firstDropTourSeen: true, churchMoment: 'found' }); setSheet(null); navigate('/church') }}
             onDone={() => {
               // One moment: closing it closes the church offer too, unless the

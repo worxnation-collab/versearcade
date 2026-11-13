@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Avatar } from '@/components/Avatar'
+import { usePlayerCard } from '@/components/PlayerCardModal'
 import { Button } from '@/components/Button'
 import { Collapsible } from '@/components/Collapsible'
 import { useChurch, INFO_NOTE_MAX, INFO_NOTE_MIN, type InfoRequestRole } from '@/store/church'
@@ -258,6 +259,7 @@ function rememberRoster(open: boolean) {
 // It folds, and the head count rides on the header, so a folded section still
 // tells you how big the congregation is rather than going quiet.
 function Congregation({ members, total, loading }: { members: ChurchMember[]; total: number; loading: boolean }) {
+  const { open: openCard } = usePlayerCard()
   const hidden = Math.max(0, total - members.length)
   if (!members.length) {
     // Nothing to fold away — one sentence, left open.
@@ -299,7 +301,10 @@ function Congregation({ members, total, loading }: { members: ChurchMember[]; to
               {/* `username` makes the avatar tappable — it opens their player card,
                   the same as every other avatar in the app. */}
               <Avatar emoji={m.avatarEmoji} character={m.avatarCharacter} username={m.username} size={28} />
-              <span
+              {/* the name opens the card too: only the 28px face did, and a
+                  tap on a name doing nothing reads as broken (2026-11-13) */}
+              <button
+                onClick={() => openCard(m.username)}
                 style={{
                   fontSize: 13,
                   fontWeight: 700,
@@ -307,10 +312,11 @@ function Congregation({ members, total, loading }: { members: ChurchMember[]; to
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
+                  color: 'inherit', font: 'inherit', padding: 0, background: 'none', border: 0, cursor: 'pointer',
                 }}
               >
                 {m.username}{m.isMe ? ' (you)' : ''}
-              </span>
+              </button>
             </span>
           ))}
         </div>

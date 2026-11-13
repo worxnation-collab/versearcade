@@ -56,7 +56,7 @@ function shell(cfg) {
   window.__fire = (plugin, event, data) => (listeners[plugin + ':' + event] || []).forEach((cb) => cb(data))
   const answer = {
     'App.getLaunchUrl': () => ({ url: null }),
-    'App.getInfo': () => ({ name: 'Verse Arcade', id: 'com.versearcade.app', build: '40', version: '1.4.0' }),
+    'App.getInfo': () => ({ name: 'Verse Arcade', id: 'com.versearcade.app', build: '40', version: '1.4.1' }),
     'App.getState': () => ({ isActive: true }),
     'PushNotifications.checkPermissions': () => ({ receive: window.__push }),
     'PushNotifications.requestPermissions': () => { window.__push = cfg.pushAnswer || 'granted'; return { receive: window.__push } },

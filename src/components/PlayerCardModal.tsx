@@ -184,7 +184,7 @@ function CardSheet({ username, onClose }: { username: string; onClose: () => voi
   return (
     <div
       onClick={onClose}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.66)', display: 'grid', placeItems: 'center', zIndex: 110, padding: 18 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(12,9,7,0.9)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', display: 'grid', placeItems: 'center', zIndex: 110, padding: 18 }}
     >
       <motion.div
         role="dialog"

@@ -30,10 +30,14 @@ export const EARLY_PLAYS = 14
 // guest it opens /church, where the wall says what a church adds.
 export function FirstDropTour({
   churchPhase,
+  churchName = null,
   onFind,
   onDone,
 }: {
   churchPhase: 'find' | 'give' | null
+  /** The player's church, when they have one: the stop then says THAT church
+   *  rather than asking a member to "find your congregation". */
+  churchName?: string | null
   onFind: () => void
   onDone: () => void
 }) {
@@ -68,13 +72,15 @@ export function FirstDropTour({
   }
   const stops = [
     { icon: '🕯️', title: 'Your Upper Room', line: 'A room of your own you furnish as you play.', to: '/you' },
-    { icon: '⛪', title: 'Play for your church', line: 'Find your congregation and give your points to its building.', to: '/church' },
+    churchName
+      ? { icon: '⛪', title: churchName, line: 'Give your points to its building and see who plays there.', to: '/church' }
+      : { icon: '⛪', title: 'Play for your church', line: 'Find your congregation and give your points to its building.', to: '/church' },
     { icon: '🕹️', title: 'The arcade', line: 'Free-play machines for after the drop — no rank, just play.', to: '/arcade' },
   ]
   return (
     <div style={{ display: 'grid', gap: 10 }}>
       <p className="dim" style={{ margin: 0, fontSize: 14, lineHeight: 1.5 }}>
-        That’s the day’s verse done. Three places worth knowing about — tap one, or come back to them whenever.
+        That’s today done. Three places worth knowing about — tap one, or come back to them whenever.
       </p>
       {stops.map((s, i) => (
         <motion.button

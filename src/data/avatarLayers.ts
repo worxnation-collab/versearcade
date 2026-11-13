@@ -423,10 +423,10 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 34
   },
   "head_laurel": {
-   "h": 178,
-   "w": 208,
-   "x": 76,
-   "y": 53
+   "h": 46,
+   "w": 132,
+   "x": 114,
+   "y": 89
   },
   "head_lion_helm": {
    "h": 160,
@@ -435,10 +435,10 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 61
   },
   "head_olive_wreath": {
-   "h": 141,
-   "w": 153,
-   "x": 104,
-   "y": 83
+   "h": 46,
+   "w": 132,
+   "x": 114,
+   "y": 89
   },
   "head_pompom_beanie": {
    "h": 132,
@@ -507,16 +507,16 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 445
   },
   "held_crook": {
-   "h": 563,
+   "h": 462,
    "w": 75,
-   "x": 53,
-   "y": 102
+   "x": 82,
+   "y": 266
   },
   "held_crook__skin": {
    "h": 80,
-   "w": 44,
-   "x": 56,
-   "y": 256
+   "w": 42,
+   "x": 85,
+   "y": 420
   },
   "held_dove": {
    "h": 65,
@@ -526,15 +526,15 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
   },
   "held_fishing_net": {
    "h": 625,
-   "w": 58,
-   "x": 57,
-   "y": 33
+   "w": 49,
+   "x": 72,
+   "y": 64
   },
   "held_fishing_net__skin": {
    "h": 40,
    "w": 29,
-   "x": 75,
-   "y": 400
+   "x": 90,
+   "y": 431
   },
   "held_hammer": {
    "h": 213,
@@ -579,28 +579,28 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 444
   },
   "held_staff": {
-   "h": 608,
-   "w": 59,
-   "x": 65,
-   "y": 62
+   "h": 551,
+   "w": 44,
+   "x": 82,
+   "y": 177
   },
   "held_staff__skin": {
    "h": 42,
    "w": 39,
-   "x": 68,
-   "y": 315
+   "x": 85,
+   "y": 430
   },
   "held_star_staff": {
-   "h": 599,
-   "w": 190,
-   "x": 37,
-   "y": 74
+   "h": 554,
+   "w": 81,
+   "x": 62,
+   "y": 174
   },
   "held_star_staff__skin": {
    "h": 42,
    "w": 42,
-   "x": 59,
-   "y": 330
+   "x": 84,
+   "y": 430
   },
   "held_sword_spirit": {
    "h": 277,
@@ -609,16 +609,16 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 372
   },
   "held_torch": {
-   "h": 628,
-   "w": 219,
-   "x": 51,
-   "y": 50
+   "h": 336,
+   "w": 53,
+   "x": 77,
+   "y": 187
   },
   "held_torch__skin": {
    "h": 50,
    "w": 47,
-   "x": 55,
-   "y": 289
+   "x": 81,
+   "y": 426
   },
   "held_trumpet": {
    "h": 123,
@@ -1511,10 +1511,10 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 34
   },
   "head_laurel": {
-   "h": 178,
-   "w": 208,
-   "x": 76,
-   "y": 53
+   "h": 46,
+   "w": 130,
+   "x": 115,
+   "y": 89
   },
   "head_lion_helm": {
    "h": 157,
@@ -1523,10 +1523,10 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 61
   },
   "head_olive_wreath": {
-   "h": 141,
-   "w": 153,
-   "x": 104,
-   "y": 83
+   "h": 46,
+   "w": 132,
+   "x": 114,
+   "y": 89
   },
   "head_pompom_beanie": {
    "h": 132,
@@ -1595,16 +1595,16 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 445
   },
   "held_crook": {
-   "h": 563,
+   "h": 462,
    "w": 75,
-   "x": 66,
-   "y": 102
+   "x": 90,
+   "y": 266
   },
   "held_crook__skin": {
    "h": 80,
-   "w": 44,
-   "x": 70,
-   "y": 256
+   "w": 42,
+   "x": 95,
+   "y": 420
   },
   "held_dove": {
    "h": 65,
@@ -1614,15 +1614,15 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
   },
   "held_fishing_net": {
    "h": 625,
-   "w": 58,
-   "x": 70,
-   "y": 33
+   "w": 49,
+   "x": 84,
+   "y": 64
   },
   "held_fishing_net__skin": {
    "h": 40,
    "w": 29,
-   "x": 88,
-   "y": 400
+   "x": 101,
+   "y": 431
   },
   "held_hammer": {
    "h": 213,
@@ -1667,28 +1667,28 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 444
   },
   "held_staff": {
-   "h": 608,
-   "w": 59,
-   "x": 77,
-   "y": 62
+   "h": 551,
+   "w": 44,
+   "x": 93,
+   "y": 177
   },
   "held_staff__skin": {
    "h": 42,
    "w": 39,
-   "x": 81,
-   "y": 315
+   "x": 96,
+   "y": 430
   },
   "held_star_staff": {
-   "h": 599,
-   "w": 190,
-   "x": 44,
-   "y": 74
+   "h": 554,
+   "w": 81,
+   "x": 73,
+   "y": 174
   },
   "held_star_staff__skin": {
    "h": 42,
    "w": 42,
-   "x": 73,
-   "y": 330
+   "x": 94,
+   "y": 430
   },
   "held_sword_spirit": {
    "h": 277,
@@ -1697,16 +1697,16 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 372
   },
   "held_torch": {
-   "h": 628,
-   "w": 219,
-   "x": 54,
-   "y": 50
+   "h": 336,
+   "w": 53,
+   "x": 88,
+   "y": 187
   },
   "held_torch__skin": {
    "h": 50,
    "w": 47,
-   "x": 69,
-   "y": 289
+   "x": 92,
+   "y": 426
   },
   "held_trumpet": {
    "h": 123,
@@ -2527,10 +2527,10 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 34
   },
   "head_laurel": {
-   "h": 178,
-   "w": 208,
-   "x": 76,
-   "y": 53
+   "h": 46,
+   "w": 130,
+   "x": 115,
+   "y": 89
   },
   "head_lion_helm": {
    "h": 157,
@@ -2539,10 +2539,10 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 61
   },
   "head_olive_wreath": {
-   "h": 141,
-   "w": 153,
-   "x": 104,
-   "y": 83
+   "h": 46,
+   "w": 132,
+   "x": 114,
+   "y": 89
   },
   "head_pompom_beanie": {
    "h": 132,
@@ -2611,16 +2611,16 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 445
   },
   "held_crook": {
-   "h": 563,
+   "h": 462,
    "w": 75,
-   "x": 35,
-   "y": 102
+   "x": 70,
+   "y": 266
   },
   "held_crook__skin": {
    "h": 80,
-   "w": 44,
-   "x": 36,
-   "y": 256
+   "w": 42,
+   "x": 70,
+   "y": 420
   },
   "held_dove": {
    "h": 65,
@@ -2630,15 +2630,15 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
   },
   "held_fishing_net": {
    "h": 625,
-   "w": 58,
-   "x": 38,
-   "y": 33
+   "w": 49,
+   "x": 55,
+   "y": 64
   },
   "held_fishing_net__skin": {
    "h": 40,
    "w": 29,
-   "x": 57,
-   "y": 400
+   "x": 75,
+   "y": 431
   },
   "held_hammer": {
    "h": 213,
@@ -2683,28 +2683,28 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 444
   },
   "held_staff": {
-   "h": 608,
-   "w": 59,
-   "x": 48,
-   "y": 62
+   "h": 551,
+   "w": 44,
+   "x": 67,
+   "y": 177
   },
   "held_staff__skin": {
    "h": 42,
    "w": 39,
-   "x": 50,
-   "y": 315
+   "x": 70,
+   "y": 430
   },
   "held_star_staff": {
-   "h": 599,
-   "w": 190,
-   "x": 27,
-   "y": 74
+   "h": 554,
+   "w": 81,
+   "x": 46,
+   "y": 174
   },
   "held_star_staff__skin": {
    "h": 42,
    "w": 42,
-   "x": 39,
-   "y": 330
+   "x": 69,
+   "y": 430
   },
   "held_sword_spirit": {
    "h": 277,
@@ -2713,16 +2713,16 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 372
   },
   "held_torch": {
-   "h": 628,
-   "w": 219,
-   "x": 47,
-   "y": 50
+   "h": 336,
+   "w": 53,
+   "x": 62,
+   "y": 187
   },
   "held_torch__skin": {
    "h": 50,
    "w": 47,
-   "x": 35,
-   "y": 289
+   "x": 66,
+   "y": 426
   },
   "held_trumpet": {
    "h": 123,
@@ -3537,10 +3537,10 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 45
   },
   "head_laurel": {
-   "h": 190,
-   "w": 214,
-   "x": 74,
-   "y": 45
+   "h": 46,
+   "w": 132,
+   "x": 114,
+   "y": 89
   },
   "head_lion_helm": {
    "h": 161,
@@ -3549,10 +3549,10 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 51
   },
   "head_olive_wreath": {
-   "h": 171,
-   "w": 206,
-   "x": 79,
-   "y": 58
+   "h": 46,
+   "w": 132,
+   "x": 114,
+   "y": 89
   },
   "head_pompom_beanie": {
    "h": 130,
@@ -3621,16 +3621,16 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 446
   },
   "held_crook": {
-   "h": 597,
+   "h": 550,
    "w": 92,
-   "x": 39,
-   "y": 68
+   "x": 69,
+   "y": 178
   },
   "held_crook__skin": {
    "h": 46,
    "w": 50,
-   "x": 50,
-   "y": 318
+   "x": 80,
+   "y": 428
   },
   "held_dove": {
    "h": 83,
@@ -3639,16 +3639,16 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 162
   },
   "held_fishing_net": {
-   "h": 633,
-   "w": 75,
-   "x": 47,
-   "y": 33
+   "h": 598,
+   "w": 62,
+   "x": 64,
+   "y": 130
   },
   "held_fishing_net__skin": {
    "h": 45,
    "w": 38,
-   "x": 69,
-   "y": 331
+   "x": 86,
+   "y": 428
   },
   "held_hammer": {
    "h": 103,
@@ -3693,28 +3693,28 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 442
   },
   "held_staff": {
-   "h": 619,
-   "w": 77,
-   "x": 62,
-   "y": 50
+   "h": 551,
+   "w": 52,
+   "x": 78,
+   "y": 177
   },
   "held_staff__skin": {
    "h": 47,
    "w": 47,
-   "x": 65,
-   "y": 300
+   "x": 81,
+   "y": 427
   },
   "held_star_staff": {
-   "h": 604,
-   "w": 188,
-   "x": 40,
-   "y": 70
+   "h": 564,
+   "w": 76,
+   "x": 58,
+   "y": 164
   },
   "held_star_staff__skin": {
    "h": 44,
    "w": 53,
-   "x": 60,
-   "y": 335
+   "x": 78,
+   "y": 429
   },
   "held_sword_spirit": {
    "h": 275,
@@ -3723,16 +3723,16 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 389
   },
   "held_torch": {
-   "h": 352,
-   "w": 93,
-   "x": 47,
-   "y": 67
+   "h": 318,
+   "w": 70,
+   "x": 68,
+   "y": 200
   },
   "held_torch__skin": {
-   "h": 128,
-   "w": 84,
-   "x": 53,
-   "y": 289
+   "h": 61,
+   "w": 62,
+   "x": 74,
+   "y": 422
   },
   "held_trumpet": {
    "h": 89,
@@ -3777,7 +3777,7 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 371
   },
   "legs_kilt": {
-   "h": 259,
+   "h": 152,
    "w": 157,
    "x": 102,
    "y": 361
@@ -4589,10 +4589,10 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 45
   },
   "head_laurel": {
-   "h": 188,
-   "w": 214,
-   "x": 74,
-   "y": 45
+   "h": 46,
+   "w": 131,
+   "x": 114,
+   "y": 89
   },
   "head_lion_helm": {
    "h": 160,
@@ -4601,10 +4601,10 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 51
   },
   "head_olive_wreath": {
-   "h": 171,
-   "w": 206,
-   "x": 79,
-   "y": 58
+   "h": 46,
+   "w": 132,
+   "x": 114,
+   "y": 89
   },
   "head_pompom_beanie": {
    "h": 130,
@@ -4673,16 +4673,16 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 446
   },
   "held_crook": {
-   "h": 597,
+   "h": 550,
    "w": 92,
-   "x": 52,
-   "y": 68
+   "x": 78,
+   "y": 178
   },
   "held_crook__skin": {
    "h": 46,
    "w": 50,
-   "x": 65,
-   "y": 318
+   "x": 90,
+   "y": 428
   },
   "held_dove": {
    "h": 83,
@@ -4691,16 +4691,16 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 162
   },
   "held_fishing_net": {
-   "h": 633,
-   "w": 75,
-   "x": 60,
-   "y": 33
+   "h": 598,
+   "w": 62,
+   "x": 76,
+   "y": 130
   },
   "held_fishing_net__skin": {
    "h": 45,
    "w": 38,
-   "x": 82,
-   "y": 331
+   "x": 96,
+   "y": 428
   },
   "held_hammer": {
    "h": 103,
@@ -4745,28 +4745,28 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 442
   },
   "held_staff": {
-   "h": 619,
-   "w": 77,
-   "x": 73,
-   "y": 50
+   "h": 551,
+   "w": 52,
+   "x": 89,
+   "y": 177
   },
   "held_staff__skin": {
    "h": 47,
    "w": 47,
-   "x": 78,
-   "y": 300
+   "x": 92,
+   "y": 427
   },
   "held_star_staff": {
-   "h": 604,
-   "w": 188,
-   "x": 46,
-   "y": 70
+   "h": 564,
+   "w": 76,
+   "x": 70,
+   "y": 164
   },
   "held_star_staff__skin": {
    "h": 44,
    "w": 53,
-   "x": 73,
-   "y": 335
+   "x": 89,
+   "y": 429
   },
   "held_sword_spirit": {
    "h": 275,
@@ -4775,16 +4775,16 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 389
   },
   "held_torch": {
-   "h": 352,
-   "w": 93,
-   "x": 59,
-   "y": 67
+   "h": 318,
+   "w": 70,
+   "x": 79,
+   "y": 200
   },
   "held_torch__skin": {
-   "h": 128,
-   "w": 84,
-   "x": 65,
-   "y": 289
+   "h": 61,
+   "w": 62,
+   "x": 84,
+   "y": 422
   },
   "held_trumpet": {
    "h": 89,
@@ -4829,7 +4829,7 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 373
   },
   "legs_kilt": {
-   "h": 259,
+   "h": 152,
    "w": 133,
    "x": 114,
    "y": 361
@@ -5569,10 +5569,10 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 45
   },
   "head_laurel": {
-   "h": 188,
-   "w": 214,
-   "x": 74,
-   "y": 45
+   "h": 46,
+   "w": 131,
+   "x": 114,
+   "y": 89
   },
   "head_lion_helm": {
    "h": 160,
@@ -5581,10 +5581,10 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 51
   },
   "head_olive_wreath": {
-   "h": 171,
-   "w": 206,
-   "x": 79,
-   "y": 58
+   "h": 46,
+   "w": 132,
+   "x": 114,
+   "y": 89
   },
   "head_pompom_beanie": {
    "h": 130,
@@ -5653,16 +5653,16 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 446
   },
   "held_crook": {
-   "h": 597,
+   "h": 550,
    "w": 92,
-   "x": 20,
-   "y": 68
+   "x": 56,
+   "y": 178
   },
   "held_crook__skin": {
    "h": 46,
    "w": 50,
-   "x": 29,
-   "y": 318
+   "x": 65,
+   "y": 428
   },
   "held_dove": {
    "h": 83,
@@ -5671,16 +5671,16 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 162
   },
   "held_fishing_net": {
-   "h": 633,
-   "w": 75,
-   "x": 28,
-   "y": 33
+   "h": 598,
+   "w": 62,
+   "x": 47,
+   "y": 130
   },
   "held_fishing_net__skin": {
    "h": 45,
    "w": 38,
-   "x": 51,
-   "y": 331
+   "x": 71,
+   "y": 428
   },
   "held_hammer": {
    "h": 103,
@@ -5725,28 +5725,28 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 442
   },
   "held_staff": {
-   "h": 619,
-   "w": 77,
-   "x": 46,
-   "y": 50
+   "h": 551,
+   "w": 52,
+   "x": 63,
+   "y": 177
   },
   "held_staff__skin": {
    "h": 47,
    "w": 47,
-   "x": 47,
-   "y": 300
+   "x": 66,
+   "y": 427
   },
   "held_star_staff": {
-   "h": 604,
-   "w": 188,
-   "x": 31,
-   "y": 70
+   "h": 564,
+   "w": 76,
+   "x": 41,
+   "y": 164
   },
   "held_star_staff__skin": {
    "h": 44,
    "w": 53,
-   "x": 41,
-   "y": 335
+   "x": 63,
+   "y": 429
   },
   "held_sword_spirit": {
    "h": 275,
@@ -5755,16 +5755,16 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 389
   },
   "held_torch": {
-   "h": 352,
-   "w": 93,
-   "x": 30,
-   "y": 67
+   "h": 318,
+   "w": 70,
+   "x": 53,
+   "y": 200
   },
   "held_torch__skin": {
-   "h": 128,
-   "w": 84,
-   "x": 36,
-   "y": 289
+   "h": 61,
+   "w": 62,
+   "x": 59,
+   "y": 422
   },
   "held_trumpet": {
    "h": 89,
@@ -5809,7 +5809,7 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 373
   },
   "legs_kilt": {
-   "h": 259,
+   "h": 152,
    "w": 185,
    "x": 88,
    "y": 361

@@ -216,3 +216,35 @@ Male braids and space buns were regenerated: both had lost the hair on the
 scalp. **`outfits.py`** renders every piece WORN on a tone, the way the app
 draws it — `audit.py` shows a layer alone, and alone is not where a cream
 sleeve or a pale fist shows. Run it on ebony and porcelain.
+
+## Second worn pass (2026-11-13)
+
+The owner found the wardrobe still wrong on a phone, so every piece was
+rendered WORN (`outfits.py`, both figures, all three builds, ebony) and four
+more fixes landed. Run them, in this order, after any re-extraction, then
+`layers.py builds`:
+
+- **`torso-shirt.py`** — the bodysuit's cream torso is now a heather-grey
+  undershirt. Cream is a skin colour on half the tones, so under a vest, a
+  toga or the lion breastplate it read as a pale chest on a dark figure;
+  grey can only be cloth. The torso column is x 128–233 from y 214 (the
+  head runs to ~210 — 160 painted the face); cream just outside it on the
+  arms' inner edge becomes skin.
+- **`head-polish.py`** — (1) the light forehead Kontext left between a high
+  brim and the brow, either a copy of the base's skin or a darker shaded
+  copy, is cleared or turned into the brim's shadow; (2) the halo and star
+  crown carried an opaque dark disc inside the ring, drawn over the top of
+  the hair so it looked sliced flat — gone; (3) crumbs (the winged helm's
+  cheek tabs) dropped; (4) the flower crown's strip of forehead cleared.
+  The laurel and olive wreaths were full rings framing the whole face; they
+  are now squashed to a 132x46 ring sitting on the hair (hand-set in
+  index.json, centre 180,112).
+- **`held-cuff.py`** — cream sleeve stubs and the white sliver by the hip
+  cleared off the five gripping pieces.
+- **`held-grip.py`** (run ONCE — it moves the piece) — those five came with
+  their own raised forearm and fist, floating at chest height beside the
+  body's hanging arm. The forearm is dropped and the piece moved so its fist
+  sits on the body's left hand (104,450): the staff is held at the side.
+
+The male kilt also lost its knee socks, which the tint turned into pale
+shins (the female kilt has none).

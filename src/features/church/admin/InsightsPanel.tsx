@@ -315,7 +315,12 @@ export function PeoplePanel({ churchId, insights, failed, demo = false, leaders,
         {label}
       </button>
     )
-  const resting = insights.roster.filter((m) => !activeThisWeek(m, insights.today))
+  // Members first, quiet leaders after them. The fold's number counts MEMBERS
+  // only, the same count Home's "N members could use a check-in" row uses
+  // (quietRow excludes leaders), so the two screens never disagree.
+  const restingAll = insights.roster.filter((m) => !activeThisWeek(m, insights.today))
+  const resting = [...restingAll.filter((m) => !m.leader), ...restingAll.filter((m) => m.leader)]
+  const restingMembers = restingAll.filter((m) => !m.leader).length
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10, minWidth: 0 }}>
@@ -333,7 +338,7 @@ export function PeoplePanel({ churchId, insights, failed, demo = false, leaders,
       {active.map((m) => <MemberRow key={m.username} m={m} today={insights.today} demo={demo} action={noteAction(m, 'Note')} />)}
       {resting.length > 0 && (
         <div id="church-quiet" ref={quietRef} style={{ scrollMarginTop: 12 }}>
-        <Collapsible icon="🕊️" title="Not active this week" meta={resting.length.toLocaleString()} defaultOpen={openQuiet}>
+        <Collapsible icon="🕊️" title="Not active this week" meta={restingMembers ? restingMembers.toLocaleString() : undefined} defaultOpen={openQuiet}>
           <div style={{ display: 'grid', gap: 8 }}>
             {resting.map((m) => (
               <MemberRow

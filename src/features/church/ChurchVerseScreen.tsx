@@ -88,7 +88,9 @@ export default function ChurchVerseScreen() {
     return (
       <QuizRunner
         verse={verse}
-        label={`⛪ ${today.churchName}`}
+        // The card already names the church, so the pill says what playing it
+        // DOES (0181) — only on the first play; a replay pays nothing.
+        label={today.played ? `⛪ ${today.churchName}` : '⛪ +50 to your church’s building'}
         runId={`church:${today.churchId}:${today.date}`}
         onExit={() => navigate('/play')}
         onComplete={async (r) => {

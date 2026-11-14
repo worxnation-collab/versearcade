@@ -133,7 +133,7 @@ export function ChurchLife({ church, extras }: { church: Church; extras: ChurchE
             {verse
               ? verse.played
                 ? `Today: ${verse.reference} · played ${verse.played.correct}/${verse.played.total} ✓`
-                : `Today: ${verse.reference} — it’s on your Play tab, after the daily verse →`
+                : `Today: ${verse.reference} — playing it adds 50 to the building. It’s on your Play tab →`
               : 'No church verse today — today’s verse is on the Play tab.'}
           </button>
         </div>

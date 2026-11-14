@@ -35,6 +35,7 @@ export default function ChurchVerseScreen() {
   const loaded = useChurchVerse((s) => s.loaded)
   const load = useChurchVerse((s) => s.load)
   const submit = useChurchVerse((s) => s.submit)
+  const built = useChurchVerse((s) => s.built)
   const [result, setResult] = useState<PlayResult | null>(null)
 
   useEffect(() => {
@@ -87,7 +88,9 @@ export default function ChurchVerseScreen() {
     return (
       <QuizRunner
         verse={verse}
-        label={`⛪ ${today.churchName}`}
+        // The card already names the church, so the pill says what playing it
+        // DOES (0181) — only on the first play; a replay pays nothing.
+        label={today.played ? `⛪ ${today.churchName}` : '⛪ +50 to your church’s building'}
         runId={`church:${today.churchId}:${today.date}`}
         onExit={() => navigate('/play')}
         onComplete={async (r) => {
@@ -129,6 +132,20 @@ export default function ChurchVerseScreen() {
           <p className="dim" style={{ marginTop: 4 }}>
             Day {p.soFar} of {p.total} · {today.series}
           </p>
+        )}
+        {/* What playing it did for the church (0181): new points for the
+            building, never taken from the player's own giving budget. */}
+        {result && built && (
+          <motion.p
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            style={{ marginTop: 8, color: 'var(--gold)', fontWeight: 700 }}
+          >
+            +{built.points} to {today.churchName}'s building
+            {built.bonus > 0 && <span style={{ display: 'block', fontWeight: 600, fontSize: 14 }}>Includes +{built.bonus} for finishing the series</span>}
+            {built.leveledUp && <span style={{ display: 'block', fontWeight: 600, fontSize: 14 }}>Your church grew a level!</span>}
+          </motion.p>
         )}
       </motion.div>
 

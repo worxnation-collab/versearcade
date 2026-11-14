@@ -786,7 +786,7 @@ function TodayPath({
           title={church.reference}
           line={churchLine ?? 'Five questions from your church'}
           note={church.note && churchLine !== church.note ? church.note : null}
-          button="▶ Play your church’s verse"
+          button="▶ Play it · +50 to the building"
           onPlay={onChurch}
         />
       ) : (

@@ -110,6 +110,11 @@ look and never an edge (YouVersion's model at our scale: ~$50–300/mo).
 **Not doing**: ads, consumer paywalls, sponsored placements.
 
 ## Done
+- 2026-11-14 (00:52 UTC) — research pass: unchanged since 20:52 (193 real
+  accounts, 27 active this week, 0 attributed, 0 inquiries, 0 plan taps).
+  Two owner decisions are open from the day's play-through (church verse
+  adding to the church's building; dropping member scores from the church
+  feed); the outreach leads still wait on the owner.
 - 2026-11-13 (20:52 UTC) — research pass: 193 real accounts (QA accounts now
   excluded), +4 in a day, 26 active this week (from 24), still 0 attributed
   sign-ups, inquiries or plan taps. Today's church work (Church Office polish,

@@ -110,6 +110,15 @@ look and never an edge (YouVersion's model at our scale: ~$50–300/mo).
 **Not doing**: ads, consumer paywalls, sponsored placements.
 
 ## Done
+- 2026-11-14 (08:52 UTC) — research pass: unchanged (193 real accounts, 27
+  active this week, 0 attributed sign-ups, 0 `pastor-ref`, 0 claims, 0 join
+  inquiries, 0 plan taps in 14 days). The two owner decisions noted at 00:52
+  are settled and live: member scores in the church feed are opt-in and
+  leaders always see them (#497, 0180), and playing the church verse adds 50
+  to the church's building, +150 for a finished series (#498, 0181) — a
+  reason for a pilot church's members to show up daily, which is what makes
+  the plan worth paying for. No church verse has paid out yet (only the demo
+  church schedules one). The outreach leads still wait on the owner.
 - 2026-11-14 (00:52 UTC) — research pass: unchanged since 20:52 (193 real
   accounts, 27 active this week, 0 attributed, 0 inquiries, 0 plan taps).
   Two owner decisions are open from the day's play-through (church verse

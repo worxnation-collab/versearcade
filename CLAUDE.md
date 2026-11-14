@@ -2912,7 +2912,7 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0181` (playing your church's verse builds your church — the owner's call, 2026-11-14: `submit_church_verse_play` restated from 0128 so a FRESH play adds 50 to the church's xp, +150 when it finishes a series (today is the series' last live day, the member played every live day of it, at least three), stored on the play as `church_points`. NEW points, never taken from the player's giving budget; flat, because the score is client-sent. `church_week_points` and `church_points_since` restated to sum it as a fourth ledger. APPLIED 2026-11-14; a live round-trip test is still to run).
+The latest is `0181` (playing your church's verse builds your church — the owner's call, 2026-11-14: `submit_church_verse_play` restated from 0128 so a FRESH play adds 50 to the church's xp, +150 when it finishes a series (today is the series' last live day, the member played every live day of it, at least three), stored on the play as `church_points`. NEW points, never taken from the player's giving budget; flat, because the score is client-sent. `church_week_points` and `church_points_since` restated to sum it as a fourth ledger. APPLIED 2026-11-14 and verified live in rolled-back transactions: a finished series pays 200, a second submit 0 and leaves the church alone, a missed series day pays 50, a bad result is refused, the giving budget is unchanged and the week total moves with it).
 
 Before it, `0180` (a member's scores in the church feed — the owner's
 call, 2026-11-14: `profiles.church_scores_shown` (default FALSE) and

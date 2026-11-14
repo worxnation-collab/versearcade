@@ -70,6 +70,8 @@ interface State {
   series: ChurchSeries | null
   date: string | null
   loaded: boolean
+  /** What the last run banked for the church's building (0181); null until one does. */
+  built: { points: number; bonus: number; leveledUp: boolean } | null
   load: (force?: boolean) => Promise<void>
   submit: (r: PlayResult) => Promise<void>
   clear: () => void
@@ -80,6 +82,7 @@ export const useChurchVerse = create<State>((set, get) => ({
   series: null,
   date: null,
   loaded: false,
+  built: null,
 
   async load(force = false) {
     const date = todayLocalDate()
@@ -112,7 +115,8 @@ export const useChurchVerse = create<State>((set, get) => ({
         progress: t.progress && !t.played ? { ...t.progress, played: t.progress.played + 1 } : t.progress },
       series: sr ? { ...sr, days: sr.days.map((d) => (d.date === t.date ? { ...d, played: true } : d)) } : sr,
     })
-    const { error } = await supabase!.rpc('submit_church_verse_play', {
+    set({ built: null })
+    const { data, error } = await supabase!.rpc('submit_church_verse_play', {
       p_local_date: t.date,
       p_score: Math.max(0, Math.min(10000, Math.round(r.score))),
       p_correct: r.correctCount,
@@ -121,11 +125,14 @@ export const useChurchVerse = create<State>((set, get) => ({
     })
     // Re-read the server's truth either way, so a refused write never leaves
     // an optimistic "done" on screen (the churchYard shape).
-    if (error) await get().load(true)
+    if (error) { await get().load(true); return }
+    // A server without 0181 answers with no church_points: nothing is shown.
+    const pts = Number((data as any)?.church_points ?? 0)
+    if (pts > 0) set({ built: { points: pts, bonus: Number((data as any)?.series_bonus ?? 0), leveledUp: !!(data as any)?.leveled_up } })
   },
 
   clear() {
-    set({ today: null, series: null, date: null, loaded: false })
+    set({ today: null, series: null, date: null, loaded: false, built: null })
   },
 }))
 

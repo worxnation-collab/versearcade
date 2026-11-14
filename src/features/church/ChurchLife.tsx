@@ -11,6 +11,7 @@ import type { Church } from '@/types'
 import { LeaderBeside } from './LeaderBeside'
 import { MyGroupCard } from './MyGroupCard'
 import { tickAutopilot } from './admin/autopilot'
+import { supabase, sessionUserId } from '@/lib/supabase'
 
 // The member's church, as a PLACE PEOPLE ARE (0128) — the top of the Church tab
 // for a member of a VERIFIED church, between the churchyard and Give:
@@ -156,6 +157,7 @@ export function ChurchLife({ church, extras }: { church: Church; extras: ChurchE
             {shown.map((e, i) => <FeedRow key={`${e.kind}-${e.at}-${i}`} e={e} />)}
           </div>
         )}
+        <ScoreShareToggle />
         {feed && feed.length > 6 && (
           <button
             onClick={() => setMore((m) => !m)}
@@ -202,10 +204,10 @@ function FeedRow({ e }: { e: FeedEvent }) {
   let what: string
   switch (e.kind) {
     case 'church_verse':
-      what = `played the church verse${e.detail ? ` (${e.detail})` : ''} — ${e.correct}/${e.total}, ${(e.score ?? 0).toLocaleString()} pts`
+      what = `played the church verse${e.detail ? ` (${e.detail})` : ''}${scoreBit(e)}`
       break
     case 'drop':
-      what = `played today’s drop — ${e.correct}/${e.total}, ${(e.score ?? 0).toLocaleString()} pts`
+      what = `played today’s drop${scoreBit(e)}`
       break
     case 'gave':
       what = `gave ${(e.points ?? 0).toLocaleString()} to the church`
@@ -246,4 +248,51 @@ export function ago(iso: string): string {
   if (h < 24) return `${h}h`
   const d = Math.round(h / 24)
   return `${d}d`
+}
+
+/** "— 2/5, 446 pts", or nothing: a member's numbers are hidden from other
+ *  members unless they chose to show them (0180); the server sends null. */
+function scoreBit(e: { score?: number | null; correct?: number | null; total?: number | null }): string {
+  return e.score == null || e.correct == null || e.total == null ? '' : ` — ${e.correct}/${e.total}, ${e.score.toLocaleString()} pts`
+}
+
+/**
+ * "Show my scores to my church" (0180). Off by default: the feed says that you
+ * played, and your numbers stay yours unless you choose otherwise. Your
+ * church's leaders always see them (they do on the People tab anyway).
+ */
+function ScoreShareToggle() {
+  const juice = useJuice()
+  const [shown, setShown] = useState<boolean | null>(null)
+  useEffect(() => {
+    let alive = true
+    void (async () => {
+      const uid = await sessionUserId()
+      if (!supabase || !uid) return
+      const { data } = await supabase.from('profiles').select('church_scores_shown').eq('id', uid).maybeSingle()
+      if (alive && data && typeof (data as { church_scores_shown?: unknown }).church_scores_shown === 'boolean') {
+        setShown((data as { church_scores_shown: boolean }).church_scores_shown)
+      }
+    })()
+    return () => { alive = false }
+  }, [])
+  if (shown === null) return null
+  const flip = async () => {
+    const next = !shown
+    setShown(next)
+    juice.select?.()
+    const { data, error } = await supabase!.rpc('set_church_scores_shown', { p_shown: next })
+    if (error || (data as { ok?: boolean } | null)?.ok === false) setShown(!next)
+  }
+  return (
+    <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 12.5, lineHeight: 1.4, cursor: 'pointer' }}>
+      <input type="checkbox" checked={shown} onChange={() => void flip()} style={{ width: 18, height: 18, flexShrink: 0 }} />
+      <span>
+        Show my scores to my church
+        <span className="faint" style={{ display: 'block', fontSize: 11.5 }}>
+          {shown ? 'Members see your numbers here.' : 'Members see that you played, not how you did.'} Your church’s leaders always can.
+        </span>
+      </span>
+    </label>
+  )
 }

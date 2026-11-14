@@ -557,8 +557,8 @@ export function ActivityPanel({ churchId }: { churchId: string }) {
 
 function describe(e: FeedEvent): string {
   switch (e.kind) {
-    case 'church_verse': return `played the church verse${e.detail ? ` (${e.detail})` : ''} — ${e.correct}/${e.total}, ${(e.score ?? 0).toLocaleString()} pts`
-    case 'drop': return `played the daily drop — ${e.correct}/${e.total}, ${(e.score ?? 0).toLocaleString()} pts`
+    case 'church_verse': return `played the church verse${e.detail ? ` (${e.detail})` : ''}${scoreBit(e)}`
+    case 'drop': return `played the daily drop${scoreBit(e)}`
     case 'gave': return `gave ${(e.points ?? 0).toLocaleString()} to the church`
     case 'joined': return 'joined the church'
     case 'notice': return `posted: “${e.detail ?? ''}”`
@@ -609,4 +609,10 @@ function pretty(iso: string): string {
   const [y, m, d] = iso.split('-').map(Number)
   if (!y || !m || !d) return iso
   return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
+/** "— 2/5, 446 pts", or nothing: a member's numbers are hidden from other
+ *  members unless they chose to show them (0180); the server sends null. */
+function scoreBit(e: { score?: number | null; correct?: number | null; total?: number | null }): string {
+  return e.score == null || e.correct == null || e.total == null ? '' : ` — ${e.correct}/${e.total}, ${e.score.toLocaleString()} pts`
 }
